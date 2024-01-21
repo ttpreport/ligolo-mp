@@ -1,0 +1,51 @@
+project_name: ligolo-mp
+
+before:
+  hooks:
+  - make clean
+  - make assets
+
+builds:
+  - main: ./cmd/server
+    id: "server"
+    binary: server
+    env: [CGO_ENABLED=0]
+    flags:
+      - -trimpath
+      - -mod=vendor
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+  - main: ./cmd/client
+    id: "client"
+    binary: client
+    env: [CGO_ENABLED=0]
+    flags:
+      - -trimpath
+      - -mod=vendor
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - 
+    id: "server"
+    builds: ['server']
+    name_template: "{{ .ProjectName }}_{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
+    format: binary
+
+  - 
+    id: "client"
+    builds: ['client']
+    name_template: "{{ .ProjectName }}_{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
+    format: binary
+release:
+  github:
+  disable: false

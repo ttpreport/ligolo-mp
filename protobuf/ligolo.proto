@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+option go_package = "github.com/ttpreport/ligolo-mp/protobuf";
+
+package ligolo;
+
+service Ligolo {
+  rpc Join(Empty) returns (stream Event) {}
+
+  rpc ListAgents (Empty) returns (ListAgentsResp) {}
+  
+  rpc NewTun (NewTunReq) returns (Empty) {}
+  rpc DelTun (DelTunReq) returns (Empty) {}
+  rpc ListTuns (Empty) returns (ListTunsResp) {}
+  rpc NewRoute (NewRouteReq) returns (NewRouteResp) {}
+  rpc DelRoute (DelRouteReq) returns (Empty) {}
+
+  rpc NewListener (NewListenerReq) returns (Empty) {}
+  rpc DelListener (DelListenerReq) returns (Empty) {}
+  rpc ListListeners (Empty) returns (ListListenersResp) {}
+  
+  rpc RelayStart (RelayStartReq) returns (Empty) {}
+  rpc RelayStop (RelayStopReq) returns (Empty) {}
+
+  rpc GenerateAgent (GenerateAgentReq) returns (GenerateAgentResp) {}
+
+  rpc ListCerts (Empty) returns (ListCertsResp) {}
+  rpc RegenCerts (RegenCertsReq) returns (Empty) {}
+}
+
+message Empty {}
+
+message Error {
+  bytes Object = 1;
+  string Reason = 2;
+}
+
+message Event {
+  string Type = 1;
+  bytes Data = 2;
+  string Error = 3;
+}
+
+message Agent {
+  string Alias = 1;
+  string Hostname = 2;
+  repeated string IPs = 3;
+  Tun Tun = 4;
+}
+
+message Tun {
+  string Alias = 1;
+  repeated Route Routes = 2;
+  bool IsLoopback = 3;
+}
+
+message Route {
+  string Cidr = 1;
+}
+
+message TunRoute {
+  Tun Tun = 1;
+  Route Route = 2;
+}
+
+message NewTunReq {
+  string Name = 1;
+  bool IsLoopback = 2;
+}
+
+message Listener {
+  Agent Agent = 1;
+  string Alias = 2;
+  string From = 3;
+  string To = 4;
+}
+
+message NewListenerReq {
+  string AgentAlias = 1;
+  string Protocol = 2;
+  string From = 3;
+  string To = 4;
+}
+
+message DelListenerReq {
+  string AgentAlias = 1;
+  string ListenerAlias = 2;
+}
+
+message ListListenersResp {
+  repeated Listener Listeners = 1;
+}
+
+message ListTunsResp {
+  repeated Tun Tuns = 1;
+}
+
+message ListAgentsResp {
+  repeated Agent Agents = 1;
+}
+
+message RelayStartReq {
+  string AgentAlias = 1;
+  string TunAlias = 2;
+}
+
+message RelayStopReq {
+  string AgentAlias = 1;
+}
+
+message Operator {
+  string Name = 1;
+}
+
+message NewRouteReq {
+  string TunAlias = 1;
+  string Cidr = 2;
+  bool Force = 3;
+}
+
+message NewRouteResp {
+  Tun OverlappingTun = 1;
+}
+
+message DelRouteReq {
+  string TunAlias = 1;
+  string Cidr = 2;
+}
+
+message DelTunReq {
+  string TunAlias = 1;
+}
+
+message GenerateAgentReq {
+  string Server = 1;
+  string GOOS = 2;
+  string GOARCH = 3;
+  bool Obfuscate = 4;
+  string SocksServer = 5; 
+  string SocksUser = 6;
+  string SocksPass = 7;
+}
+
+message GenerateAgentResp {
+  bytes AgentBinary = 1;
+}
+
+message Cert {
+  string Name = 1;
+  string ExpiryDate = 2;
+}
+
+message ListCertsResp {
+  repeated Cert Certs = 1;
+}
+
+message RegenCertsReq {
+  string Name = 1;
+}
