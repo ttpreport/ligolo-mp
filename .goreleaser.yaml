@@ -41,7 +41,7 @@ builds:
       - 7
 
   - main: ./cmd/client
-    id: "client"
+    id: "client-windows"
     binary: client
     env: [CGO_ENABLED=0]
     flags:
@@ -66,7 +66,7 @@ archives:
 
   - 
     id: "client"
-    builds: ['client']
+    builds: ['client-linux', 'client-windows']
     name_template: "{{ .ProjectName }}_{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
     format: binary
 release:
