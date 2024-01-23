@@ -5,15 +5,15 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/nicocha30/gvisor-ligolo/pkg/buffer"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/checksum"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/header"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/network/ipv4"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/stack"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/icmp"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/raw"
-	"github.com/nicocha30/gvisor-ligolo/pkg/waiter"
+	"github.com/ttpreport/gvisor-ligolo/pkg/buffer"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/checksum"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/header"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/ipv4"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/stack"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/icmp"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/raw"
+	"github.com/ttpreport/gvisor-ligolo/pkg/waiter"
 )
 
 // icmpResponder handle ICMP packets coming to gvisor/netstack.

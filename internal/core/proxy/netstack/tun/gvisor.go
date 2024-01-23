@@ -4,10 +4,10 @@
 package tun
 
 import (
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/fdbased"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/rawfile"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/tun"
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/stack"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/fdbased"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/rawfile"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/tun"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/stack"
 )
 
 func Open(tunName string) (stack.LinkEndpoint, int, error) {

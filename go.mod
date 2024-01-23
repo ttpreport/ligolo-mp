@@ -18,7 +18,7 @@ require (
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/fatih/color v1.16.0
 	github.com/manifoldco/promptui v0.9.0
-	github.com/nicocha30/gvisor-ligolo v0.0.0-20230726075806-989fa2c0a413
+	github.com/ttpreport/gvisor-ligolo v0.0.0-20240123134145-a858404967ba
 	github.com/vishvananda/netlink v1.1.1-0.20211118161826-650dca95af54
 	golang.org/x/sys v0.15.0
 	google.golang.org/grpc v1.60.1

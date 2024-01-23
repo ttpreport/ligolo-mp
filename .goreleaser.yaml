@@ -16,8 +16,29 @@ builds:
     goos:
       - linux
     goarch:
+      - 386
       - amd64
       - arm64
+    goarm:
+      - 6
+      - 7
+
+  - main: ./cmd/client
+    id: "client-linux"
+    binary: client
+    env: [CGO_ENABLED=0]
+    flags:
+      - -trimpath
+      - -mod=vendor
+    goos:
+      - linux
+    goarch:
+      - 386
+      - amd64
+      - arm64
+    goarm:
+      - 6
+      - 7
 
   - main: ./cmd/client
     id: "client"
@@ -27,12 +48,14 @@ builds:
       - -trimpath
       - -mod=vendor
     goos:
-      - linux
       - windows
       - darwin
     goarch:
       - amd64
       - arm64
+    goarm:
+      - 6
+      - 7
 
 archives:
   - 

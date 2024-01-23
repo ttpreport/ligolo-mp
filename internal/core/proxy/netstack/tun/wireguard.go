@@ -4,7 +4,7 @@
 package tun
 
 import (
-	"github.com/nicocha30/gvisor-ligolo/pkg/tcpip/stack"
+	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/stack"
 	"golang.zx2c4.com/wireguard/tun"
 )
 

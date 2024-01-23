@@ -72,66 +72,66 @@ github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.13
 ## explicit; go 1.9
 github.com/mattn/go-runewidth
-# github.com/nicocha30/gvisor-ligolo v0.0.0-20230726075806-989fa2c0a413
-## explicit; go 1.20
-github.com/nicocha30/gvisor-ligolo/pkg/abi/linux/errno
-github.com/nicocha30/gvisor-ligolo/pkg/atomicbitops
-github.com/nicocha30/gvisor-ligolo/pkg/bits
-github.com/nicocha30/gvisor-ligolo/pkg/buffer
-github.com/nicocha30/gvisor-ligolo/pkg/context
-github.com/nicocha30/gvisor-ligolo/pkg/cpuid
-github.com/nicocha30/gvisor-ligolo/pkg/errors
-github.com/nicocha30/gvisor-ligolo/pkg/errors/linuxerr
-github.com/nicocha30/gvisor-ligolo/pkg/gohacks
-github.com/nicocha30/gvisor-ligolo/pkg/goid
-github.com/nicocha30/gvisor-ligolo/pkg/linewriter
-github.com/nicocha30/gvisor-ligolo/pkg/log
-github.com/nicocha30/gvisor-ligolo/pkg/rand
-github.com/nicocha30/gvisor-ligolo/pkg/refs
-github.com/nicocha30/gvisor-ligolo/pkg/sleep
-github.com/nicocha30/gvisor-ligolo/pkg/state
-github.com/nicocha30/gvisor-ligolo/pkg/state/wire
-github.com/nicocha30/gvisor-ligolo/pkg/sync
-github.com/nicocha30/gvisor-ligolo/pkg/sync/locking
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/adapters/gonet
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/checksum
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/hash/jenkins
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/header
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/header/parse
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/internal/tcp
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/channel
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/fdbased
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/nested
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/packetsocket
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/rawfile
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/stopfd
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/link/tun
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/network/hash
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/network/internal/fragmentation
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/network/internal/ip
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/network/internal/multicast
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/network/ipv4
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/network/ipv6
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/ports
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/seqnum
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/stack
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/icmp
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/internal/network
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/internal/noop
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/packet
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/raw
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/tcp
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/tcpconntrack
-github.com/nicocha30/gvisor-ligolo/pkg/tcpip/transport/udp
-github.com/nicocha30/gvisor-ligolo/pkg/waiter
 # github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
 ## explicit; go 1.12
 github.com/remyoudompheng/bigfft
 # github.com/rivo/uniseg v0.2.0
 ## explicit; go 1.12
 github.com/rivo/uniseg
+# github.com/ttpreport/gvisor-ligolo v0.0.0-20240123134145-a858404967ba
+## explicit; go 1.20
+github.com/ttpreport/gvisor-ligolo/pkg/abi/linux/errno
+github.com/ttpreport/gvisor-ligolo/pkg/atomicbitops
+github.com/ttpreport/gvisor-ligolo/pkg/bits
+github.com/ttpreport/gvisor-ligolo/pkg/buffer
+github.com/ttpreport/gvisor-ligolo/pkg/context
+github.com/ttpreport/gvisor-ligolo/pkg/cpuid
+github.com/ttpreport/gvisor-ligolo/pkg/errors
+github.com/ttpreport/gvisor-ligolo/pkg/errors/linuxerr
+github.com/ttpreport/gvisor-ligolo/pkg/gohacks
+github.com/ttpreport/gvisor-ligolo/pkg/goid
+github.com/ttpreport/gvisor-ligolo/pkg/linewriter
+github.com/ttpreport/gvisor-ligolo/pkg/log
+github.com/ttpreport/gvisor-ligolo/pkg/rand
+github.com/ttpreport/gvisor-ligolo/pkg/refs
+github.com/ttpreport/gvisor-ligolo/pkg/sleep
+github.com/ttpreport/gvisor-ligolo/pkg/state
+github.com/ttpreport/gvisor-ligolo/pkg/state/wire
+github.com/ttpreport/gvisor-ligolo/pkg/sync
+github.com/ttpreport/gvisor-ligolo/pkg/sync/locking
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/adapters/gonet
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/checksum
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/hash/jenkins
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/header
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/header/parse
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/internal/tcp
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/channel
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/fdbased
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/nested
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/packetsocket
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/rawfile
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/stopfd
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/link/tun
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/hash
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/internal/fragmentation
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/internal/ip
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/internal/multicast
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/ipv4
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/ipv6
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/ports
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/seqnum
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/stack
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/icmp
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/internal/network
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/internal/noop
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/packet
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/raw
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/tcp
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/tcpconntrack
+github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/udp
+github.com/ttpreport/gvisor-ligolo/pkg/waiter
 # github.com/vishvananda/netlink v1.1.1-0.20211118161826-650dca95af54
 ## explicit; go 1.12
 github.com/vishvananda/netlink
