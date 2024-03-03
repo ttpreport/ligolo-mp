@@ -39,6 +39,12 @@ func handleEvents(eventStream pb.Ligolo_JoinClient) {
 			if err == nil {
 				printOk("Agent %s@%s joined", data.Alias, data.Hostname)
 			}
+		case events.AgentRenamed:
+			data := &pb.Agent{}
+			err = proto.Unmarshal(event.Data, data)
+			if err == nil {
+				printOk("Agent %s@%s renamed", data.Alias, data.Hostname)
+			}
 		case events.AgentLost:
 			data := &pb.Error{}
 			err = proto.Unmarshal(event.Data, data)
@@ -70,6 +76,12 @@ func handleEvents(eventStream pb.Ligolo_JoinClient) {
 			err = proto.Unmarshal(event.Data, data)
 			if err == nil {
 				printWarn("TUN lost: %s", data.Alias)
+			}
+		case events.TunRenamed:
+			data := &pb.Tun{}
+			err = proto.Unmarshal(event.Data, data)
+			if err == nil {
+				printOk("TUN renamed: %s", data.Alias)
 			}
 		case events.RouteNew:
 			data := &pb.TunRoute{}

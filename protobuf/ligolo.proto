@@ -8,10 +8,13 @@ service Ligolo {
   rpc Join(Empty) returns (stream Event) {}
 
   rpc ListAgents (Empty) returns (ListAgentsResp) {}
+  rpc RenameAgent (RenameAgentReq) returns (Empty) {}
   
   rpc NewTun (NewTunReq) returns (Empty) {}
   rpc DelTun (DelTunReq) returns (Empty) {}
   rpc ListTuns (Empty) returns (ListTunsResp) {}
+  rpc RenameTun (RenameTunReq) returns (Empty) {}
+
   rpc NewRoute (NewRouteReq) returns (NewRouteResp) {}
   rpc DelRoute (DelRouteReq) returns (Empty) {}
 
@@ -131,6 +134,11 @@ message DelTunReq {
   string TunAlias = 1;
 }
 
+message RenameTunReq {
+  string OldAlias = 1;
+  string NewAlias = 2;
+}
+
 message GenerateAgentReq {
   string Server = 1;
   string GOOS = 2;
@@ -143,6 +151,11 @@ message GenerateAgentReq {
 
 message GenerateAgentResp {
   bytes AgentBinary = 1;
+}
+
+message RenameAgentReq {
+  string OldAlias = 1;
+  string NewAlias = 2;
 }
 
 message Cert {

@@ -8,7 +8,6 @@ import (
 	"net/netip"
 	"sync"
 
-	"github.com/docker/docker/pkg/namesgenerator"
 	"github.com/ttpreport/ligolo-mp/internal/common/events"
 	"github.com/ttpreport/ligolo-mp/internal/core/storage"
 )
@@ -52,16 +51,7 @@ func (tuns *Tuns) Create(name string, isLoopback bool) (Tun, error) {
 
 	slog.Info("Create tun", slog.Any("name", name))
 
-	var alias string
-	for i := 0; i < 6; i++ {
-		alias = namesgenerator.GetRandomName(i)
-
-		if _, ok := tuns.active[alias]; !ok {
-			break
-		}
-	}
-	tun, err := newTun(name, alias, isLoopback)
-
+	tun, err := newTun(name, name, isLoopback)
 	if err != nil {
 		slog.Error("Couldn't add tun",
 			slog.Any("reason", err),
@@ -69,9 +59,9 @@ func (tuns *Tuns) Create(name string, isLoopback bool) (Tun, error) {
 		return Tun{}, nil
 	}
 
-	tuns.active[alias] = tun
+	tuns.active[name] = tun
 
-	if err := tuns.store.AddTun(alias, name, isLoopback); err != nil {
+	if err := tuns.store.AddTun(name, name, isLoopback); err != nil {
 		slog.Warn("Couldn't save tun to storage",
 			slog.Any("reason", err),
 		)
@@ -125,6 +115,25 @@ func (tuns *Tuns) Destroy(alias string) error {
 
 	if err := tuns.store.DelTun(alias); err != nil {
 		slog.Warn("Couldn't remove tun from storage",
+			slog.Any("reason", err),
+		)
+	}
+
+	return nil
+}
+
+func (tuns *Tuns) Rename(oldAlias, newAlias string) error {
+	tuns.mutex.Lock()
+	defer tuns.mutex.Unlock()
+
+	if tun, ok := tuns.active[oldAlias]; ok {
+		tun.Alias = newAlias
+
+		events.EventStream <- events.Event{Type: events.TunRenamed, Data: *tun}
+	}
+
+	if err := tuns.store.RenameTun(oldAlias, newAlias); err != nil {
+		slog.Warn("Couldn't rename tun from storage",
 			slog.Any("reason", err),
 		)
 	}

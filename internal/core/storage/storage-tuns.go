@@ -51,22 +51,37 @@ func (storage *Store) AddTun(alias string, name string, isLoopback bool) error {
 }
 
 func (storage *Store) DelTun(alias string) error {
-	var err error
-	_, err = storage.db.ExecContext(
-		context.Background(),
-		`DELETE FROM tuns WHERE alias = ?;`, alias,
-	)
+	ctx := context.Background()
 
+	_, err := storage.db.ExecContext(ctx, `DELETE FROM tuns WHERE alias = ?;`, alias)
 	if err != nil {
 		return err
 	}
 
-	_, err = storage.db.ExecContext(
-		context.Background(),
-		`DELETE FROM routes WHERE tun_alias = ?;`, alias,
-	)
+	return nil
+}
 
+func (storage *Store) RenameTun(oldAlias, newAlias string) error {
+	ctx := context.Background()
+
+	tx, err := storage.db.BeginTx(ctx, nil)
 	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `UPDATE tuns SET alias = ? WHERE alias = ?;`, newAlias, oldAlias)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `UPDATE agent_cache SET tun_alias = ? WHERE tun_alias = ?;`, newAlias, oldAlias)
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
 		return err
 	}
 

@@ -41,6 +41,13 @@ func (s *ligoloServer) HandleEvents() {
 			)
 
 			pbData, err = proto.Marshal(agent.Proto())
+		case events.AgentRenamed:
+			agent := event.Data.(agents.Agent)
+			slog.Info("Agent renamed",
+				slog.Any("agent", agent),
+			)
+
+			pbData, err = proto.Marshal(agent.Proto())
 		case events.AgentLost:
 			agent := event.Data.(agents.Agent)
 			slog.Warn("Agent disconnected",
@@ -87,6 +94,13 @@ func (s *ligoloServer) HandleEvents() {
 		case events.TunLost:
 			tun := event.Data.(tuns.Tun)
 			slog.Info("TUN lost",
+				slog.Any("tun", event.Data),
+			)
+
+			pbData, err = proto.Marshal(tun.Proto())
+		case events.TunRenamed:
+			tun := event.Data.(tuns.Tun)
+			slog.Info("TUN renamed",
 				slog.Any("tun", event.Data),
 			)
 
