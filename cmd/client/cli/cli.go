@@ -80,8 +80,8 @@ func selectCredentials(store *storage.Store) *operator.Credentials {
 		Selected: "Selected: {{ .Name | green }}",
 		Details: `
 --------- Agents ----------
-Name:	{{ .Name }}
-Server:	{{ .Server}}
+Name:   {{ .Name }}
+Server: {{ .Server }}
 `,
 	}
 
@@ -129,7 +129,8 @@ func selectAgent(client pb.LigoloClient) (*pb.Agent, error) {
 		Selected: "Selected: {{ .Alias | green }}",
 		Details: `
 --------- Agents ----------
-Alias:	{{ .Alias }}
+Alias:    {{ .Alias }}
+Hostname: {{ .Hostname }}
 
 {{range $i, $r := .IPs}}
 IP {{$i}}:	{{ $r }}{{ end }}`,
@@ -355,7 +356,7 @@ func Run(store *storage.Store) {
 			t := table.NewWriter()
 			t.SetStyle(table.StyleLight)
 			t.SetTitle("Active agents")
-			t.AppendHeader(table.Row{"Alias", "Agent interfaces", "Connected TUN", "Routes", "Is loopback"})
+			t.AppendHeader(table.Row{"Alias", "Hostname", "Agent interfaces", "Connected TUN", "Routes", "Is loopback"})
 
 			for _, agent := range r.Agents {
 				if agent.Tun != nil {
@@ -363,12 +364,55 @@ func Run(store *storage.Store) {
 					for _, route := range agent.Tun.Routes {
 						routes = append(routes, route.Cidr)
 					}
-					t.AppendRow(table.Row{agent.Alias, strings.Join(agent.IPs, "\n"), agent.Tun.Alias, strings.Join(routes, "\n"), agent.Tun.IsLoopback})
+
+					t.AppendRow(table.Row{
+						agent.Alias,
+						agent.Hostname,
+						strings.Join(agent.IPs, "\n"),
+						agent.Tun.Alias,
+						strings.Join(routes, "\n"),
+						agent.Tun.IsLoopback,
+					})
 				} else {
-					t.AppendRow(table.Row{agent.Alias, strings.Join(agent.IPs, "\n")})
+					t.AppendRow(table.Row{
+						agent.Alias,
+						agent.Hostname,
+						strings.Join(agent.IPs, "\n"),
+					})
 				}
 			}
+
 			c.App.Println(t.Render())
+
+			return nil
+		},
+	})
+
+	agentCommand.AddCommand(&grumble.Command{
+		Name:  "rename",
+		Help:  "Rename existing agent session",
+		Usage: "agent rename new-name",
+		Args: func(a *grumble.Args) {
+			a.String("name", "New name of the agent")
+		},
+		Run: func(c *grumble.Context) error {
+			agent, err := selectAgent(client)
+			if err != nil {
+				return err
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+
+			_, err = client.RenameAgent(ctx, &pb.RenameAgentReq{
+				OldAlias: agent.Alias,
+				NewAlias: c.Args.String("name"),
+			})
+
+			if err != nil {
+				return err
+			}
+
 			return nil
 		},
 	})
@@ -497,6 +541,35 @@ func Run(store *storage.Store) {
 				Name:       c.Flags.String("name"),
 				IsLoopback: c.Flags.Bool("loopback"),
 			})
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	})
+
+	tunCommand.AddCommand(&grumble.Command{
+		Name:  "rename",
+		Help:  "Rename created TUN",
+		Usage: "tun rename new-name",
+		Args: func(a *grumble.Args) {
+			a.String("name", "New name for TUN")
+		},
+		Run: func(c *grumble.Context) error {
+			tun, err := selectTun(client)
+			if err != nil {
+				return err
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+
+			_, err = client.RenameTun(ctx, &pb.RenameTunReq{
+				OldAlias: tun.Alias,
+				NewAlias: c.Args.String("name"),
+			})
+
 			if err != nil {
 				return err
 			}

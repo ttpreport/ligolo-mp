@@ -70,6 +70,11 @@ func (s *ligoloServer) ListAgents(ctx context.Context, in *pb.Empty) (*pb.ListAg
 	return agents, nil
 }
 
+func (s *ligoloServer) RenameAgent(ctx context.Context, in *pb.RenameAgentReq) (*pb.Empty, error) {
+	slog.Debug("Received request to rename agent", slog.Any("in", in))
+	return &pb.Empty{}, s.agents.Rename(in.OldAlias, in.NewAlias)
+}
+
 func (s *ligoloServer) RelayStart(ctx context.Context, in *pb.RelayStartReq) (*pb.Empty, error) {
 	slog.Debug("Received request to start relay", slog.Any("in", in))
 	tun := s.tuns.GetOne(in.GetTunAlias())
@@ -105,6 +110,11 @@ func (s *ligoloServer) NewTun(ctx context.Context, in *pb.NewTunReq) (*pb.Empty,
 func (s *ligoloServer) DelTun(ctx context.Context, in *pb.DelTunReq) (*pb.Empty, error) {
 	slog.Debug("Received request to delete tun", slog.Any("in", in))
 	return &pb.Empty{}, s.tuns.Destroy(in.TunAlias)
+}
+
+func (s *ligoloServer) RenameTun(ctx context.Context, in *pb.RenameTunReq) (*pb.Empty, error) {
+	slog.Debug("Received request to rename tun", slog.Any("in", in))
+	return &pb.Empty{}, s.tuns.Rename(in.OldAlias, in.NewAlias)
 }
 
 func (s *ligoloServer) NewRoute(ctx context.Context, in *pb.NewRouteReq) (*pb.NewRouteResp, error) {

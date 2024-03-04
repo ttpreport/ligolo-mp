@@ -38,25 +38,20 @@ func (storage *Store) GetOperators() ([]operatorsRow, error) {
 }
 
 func (storage *Store) GetOperator(name string) (*operatorsRow, error) {
-	var err error
 	ret := &operatorsRow{}
 
-	row := storage.db.QueryRowContext(
+	err := storage.db.QueryRowContext(
 		context.Background(),
 		`SELECT name, cert_id FROM operators WHERE name = ?;`, name,
+	).Scan(
+		&ret.Name, &ret.CertId,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if err := row.Scan(
-		&ret.Name, &ret.CertId,
-	); err != nil {
-		return nil, nil
-	}
-
-	return ret, err
+	return ret, nil
 }
 
 func (storage *Store) AddOperator(name string, certId int64) error {

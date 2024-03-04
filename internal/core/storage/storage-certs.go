@@ -40,25 +40,20 @@ func (storage *Store) GetCerts() ([]certsRow, error) {
 }
 
 func (storage *Store) GetCert(name string) (*certsRow, error) {
-	var err error
 	ret := &certsRow{}
 
-	row := storage.db.QueryRowContext(
+	err := storage.db.QueryRowContext(
 		context.Background(),
 		`SELECT id, name, certificate, key FROM certs WHERE name = ?;`, name,
+	).Scan(
+		&ret.Id, &ret.Name, &ret.Certificate, &ret.Key,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if err := row.Scan(
-		&ret.Id, &ret.Name, &ret.Certificate, &ret.Key,
-	); err != nil {
-		return nil, nil
-	}
-
-	return ret, err
+	return ret, nil
 }
 
 func (storage *Store) AddCert(name string, certificate []byte, key []byte) (int64, error) {

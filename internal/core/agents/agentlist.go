@@ -58,6 +58,21 @@ func (agents *Agents) Create(config *config.Config, session *yamux.Session) (*Ag
 	return new_agent, nil
 }
 
+func (agents *Agents) Rename(oldAlias, newAlias string) error {
+	agents.mutex.RLock()
+	defer agents.mutex.RUnlock()
+
+	agent := agents.active[oldAlias]
+	if agent == nil {
+		return errors.New("agent not found")
+	}
+
+	events.EventStream <- events.Event{Type: events.AgentRenamed, Data: *agent}
+	agent.Alias = newAlias
+
+	return nil
+}
+
 func (agents *Agents) Destroy(alias string) {
 	agents.mutex.Lock()
 	defer agents.mutex.Unlock()
