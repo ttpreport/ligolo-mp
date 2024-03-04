@@ -127,15 +127,16 @@ func (tuns *Tuns) Rename(oldAlias, newAlias string) error {
 	defer tuns.mutex.Unlock()
 
 	if tun, ok := tuns.active[oldAlias]; ok {
+		if err := tuns.store.RenameTun(oldAlias, newAlias); err != nil {
+			slog.Warn("Couldn't rename tun in storage",
+				slog.Any("reason", err),
+			)
+			return err
+		}
+
 		tun.Alias = newAlias
 
 		events.EventStream <- events.Event{Type: events.TunRenamed, Data: *tun}
-	}
-
-	if err := tuns.store.RenameTun(oldAlias, newAlias); err != nil {
-		slog.Warn("Couldn't rename tun from storage",
-			slog.Any("reason", err),
-		)
 	}
 
 	return nil

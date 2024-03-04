@@ -59,8 +59,8 @@ func (agents *Agents) Create(config *config.Config, session *yamux.Session) (*Ag
 }
 
 func (agents *Agents) Rename(oldAlias, newAlias string) error {
-	agents.mutex.RLock()
-	defer agents.mutex.RUnlock()
+	agents.mutex.Lock()
+	defer agents.mutex.Unlock()
 
 	agent := agents.active[oldAlias]
 	if agent == nil {
