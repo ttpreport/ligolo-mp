@@ -67,7 +67,15 @@ func (agents *Agents) Rename(oldAlias, newAlias string) error {
 		return errors.New("agent not found")
 	}
 
+	if _, ok := agents.active[newAlias]; ok {
+		return errors.New("new agent alias already exists")
+	}
+
 	events.EventStream <- events.Event{Type: events.AgentRenamed, Data: *agent}
+
+	agents.active[newAlias] = agent
+	delete(agents.active, oldAlias)
+
 	agent.Alias = newAlias
 
 	return nil

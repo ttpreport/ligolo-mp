@@ -3,6 +3,7 @@ package tuns
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/netip"
@@ -38,8 +39,6 @@ func (tuns *Tuns) Create(name string, isLoopback bool) (Tun, error) {
 	tuns.mutex.Lock()
 	defer tuns.mutex.Unlock()
 
-	var err error
-
 	if name == "" {
 		suffix, err := randomHex(6)
 		if err != nil {
@@ -47,6 +46,10 @@ func (tuns *Tuns) Create(name string, isLoopback bool) (Tun, error) {
 		}
 
 		name = fmt.Sprintf("lig%s", suffix)
+	}
+
+	if _, ok := tuns.active[name]; ok {
+		return Tun{}, errors.New("tun with specified name already exists")
 	}
 
 	slog.Info("Create tun", slog.Any("name", name))
@@ -126,18 +129,29 @@ func (tuns *Tuns) Rename(oldAlias, newAlias string) error {
 	tuns.mutex.Lock()
 	defer tuns.mutex.Unlock()
 
-	if tun, ok := tuns.active[oldAlias]; ok {
-		if err := tuns.store.RenameTun(oldAlias, newAlias); err != nil {
-			slog.Warn("Couldn't rename tun in storage",
-				slog.Any("reason", err),
-			)
-			return err
-		}
-
-		tun.Alias = newAlias
-
-		events.EventStream <- events.Event{Type: events.TunRenamed, Data: *tun}
+	tun := tuns.active[oldAlias]
+	if tun == nil {
+		return errors.New("tun not found")
 	}
+
+	if _, ok := tuns.active[newAlias]; ok {
+		return errors.New("new tun alias already exists")
+	}
+
+	if err := tuns.store.RenameTun(oldAlias, newAlias); err != nil {
+		slog.Warn("Couldn't rename tun in storage",
+			slog.Any("reason", err),
+		)
+
+		return err
+	}
+
+	events.EventStream <- events.Event{Type: events.TunRenamed, Data: *tun}
+
+	tuns.active[newAlias] = tun
+	delete(tuns.active, oldAlias)
+
+	tun.Alias = newAlias
 
 	return nil
 }
