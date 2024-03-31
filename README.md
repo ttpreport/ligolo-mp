@@ -162,7 +162,7 @@ Selected: confident_euclid
 [+] Route 10.10.4.0/32@confident_euclid created
 ```
 
-3. Generate an agent binary
+3. Generate an agent binary (11601 - is a default port server is listening on, use whatever you provided as `-agentaddr` otherwise)
 
 ```shell
 $ agent generate --save /home/kali/agent --os linux --arch amd64 --server 127.0.0.1:11601 --obfuscate
