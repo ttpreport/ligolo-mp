@@ -1,6 +1,9 @@
 package storage
 
-import "context"
+import (
+	"context"
+	"database/sql"
+)
 
 type agentsRow struct {
 	TunAlias string
@@ -16,6 +19,9 @@ func (storage *Store) GetAgentTun(agent_hash string) (*agentsRow, error) {
 	)
 
 	if err = row.Scan(&ret.TunAlias); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, nil
 	}
 

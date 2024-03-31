@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 )
 
 type certsRow struct {
@@ -50,6 +51,10 @@ func (storage *Store) GetCert(name string) (*certsRow, error) {
 	)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 

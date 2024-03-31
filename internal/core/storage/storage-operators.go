@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 )
 
 type operatorsRow struct {
@@ -48,6 +49,9 @@ func (storage *Store) GetOperator(name string) (*operatorsRow, error) {
 	)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
