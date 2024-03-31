@@ -150,7 +150,7 @@ ligolo-mp » tun new
 [+] New TUN created: confident_euclid
 ```
 
-2. Add some routes to it
+2. Add routes to networks which are accessible via host that's running running ligolo agent
 
 ```shell
 ligolo-mp » tun route new 10.10.2.0/24 10.10.3.0/24 10.10.4.0/32
