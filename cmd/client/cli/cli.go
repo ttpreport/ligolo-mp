@@ -2,8 +2,6 @@ package cli
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -16,11 +14,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/manifoldco/promptui"
-	"github.com/ttpreport/ligolo-mp/internal/common/operator"
-	"github.com/ttpreport/ligolo-mp/internal/core/storage"
+	"github.com/ttpreport/ligolo-mp/internal/certificate"
+	"github.com/ttpreport/ligolo-mp/internal/operator"
 	pb "github.com/ttpreport/ligolo-mp/protobuf"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 func printErr(format string, args ...any) {
@@ -63,14 +59,14 @@ func init() {
 	})
 }
 
-func selectCredentials(store *storage.Store) *operator.Credentials {
-	credentials, err := store.GetCreds()
+func selectCredentials(operatorService *operator.OperatorService) (*operator.Operator, error) {
+	credentials, err := operatorService.AllOperators()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if len(credentials) < 1 {
-		panic("no credentials available")
+		return nil, errors.New("no credentials available")
 	}
 
 	templates := &promptui.SelectTemplates{
@@ -100,182 +96,107 @@ Server: {{ .Server }}
 
 	cred := credentials[index]
 
-	return &operator.Credentials{
-		Name:         cred.Name,
-		Server:       cred.Server,
-		CACert:       cred.CaCert,
-		OperatorCert: cred.OperatorCert,
-		OperatorKey:  cred.OperatorKey,
-	}
+	return cred, nil
 }
 
-func selectAgent(client pb.LigoloClient) (*pb.Agent, error) {
+func getSessions(oper *operator.Operator) ([]*pb.Session, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	r, err := client.ListAgents(ctx, &pb.Empty{})
+	r, err := oper.Client().GetSessions(ctx, &pb.Empty{})
 	if err != nil {
 		return nil, err
 	}
 
-	if len(r.Agents) < 1 {
-		return nil, errors.New("no active agents")
-	}
+	return r.Sessions, nil
+}
 
+func selectSession(sessions []*pb.Session) (*pb.Session, error) {
 	templates := &promptui.SelectTemplates{
-		Label:    "{{ . }}",
-		Active:   "-> {{ .Alias | red }}",
-		Inactive: "{{ .Alias | cyan }}",
-		Selected: "Selected: {{ .Alias | green }}",
+		Label:    "{{ .ID }}",
+		Active:   "-> {{ if not .Alias }} {{ .Hostname }} {{ else }} {{ .Alias }} {{ end }}",
+		Inactive: "{{ if not .Alias }} {{ .Hostname }} {{ else }} {{ .Alias }} {{ end }}",
+		Selected: "Selected: {{ if not .Alias }} {{ .Hostname }} {{ else }} {{ .Alias }} {{ end }}",
 		Details: `
---------- Agents ----------
-Alias:    {{ .Alias }}
+--------- Details ----------
+ID: {{ .ID }}
+Alias: {{ .Alias }}
 Hostname: {{ .Hostname }}
 
-{{range $i, $r := .IPs}}
-IP {{$i}}:	{{ $r }}{{ end }}`,
+{{range $i, $r := .Interfaces}}
+{{range $j, $k := $r.IPs}}IP {{$i}} ({{$j}}): {{ $k }}
+{{ end }}
+{{ end }}`,
 	}
 
 	prompt := promptui.Select{
-		Label:     "Select agent",
-		Items:     r.Agents,
+		Label:     "Select session",
+		Items:     sessions,
 		Templates: templates,
 		Size:      4,
 	}
 
 	index, _, err := prompt.Run()
 
-	return r.Agents[index], err
+	return sessions[index], err
 }
 
-func selectTun(client pb.LigoloClient) (*pb.Tun, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	r, err := client.ListTuns(ctx, &pb.Empty{})
-	if err != nil {
-		return nil, err
+func selectRedirector(sessions []*pb.Session) (*pb.Session, *pb.Redirector, error) {
+	var redirectors []struct {
+		Session    *pb.Session
+		Redirector *pb.Redirector
 	}
 
-	if len(r.Tuns) < 1 {
-		return nil, errors.New("no active TUNs")
+	for _, session := range sessions {
+		for _, redirector := range session.Redirectors {
+			redirectors = append(redirectors, struct {
+				Session    *pb.Session
+				Redirector *pb.Redirector
+			}{
+				Session:    session,
+				Redirector: redirector,
+			})
+		}
+	}
+
+	if len(redirectors) < 1 {
+		return nil, nil, errors.New("no redirectors available")
 	}
 
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}",
-		Active:   "-> {{ .Alias | red }}",
-		Inactive: "{{ .Alias | cyan }}",
-		Selected: "Selected: {{ .Alias | green }}",
-		Details: `
---------- Listener ----------
-Alias:	{{ .Alias }}
-
-{{range $i, $r := .Routes}}
-Route {{$i}}:	{{ .Cidr }}{{ end }}`,
+		Active:   "-> {{ .Redirector.From }} --{{ .Redirector.Protocol }}-> {{ .Redirector.To }}",
+		Inactive: "{{ .Redirector.From }} --{{ .Redirector.Protocol }}-> {{ .Redirector.To }}",
+		Selected: "Selected: {{ .Redirector.From }} --{{ .Redirector.Protocol }}-> {{ .Redirector.To }}",
 	}
 
 	prompt := promptui.Select{
-		Label:     "Select TUN",
-		Items:     r.Tuns,
+		Label:     "Select redirector",
+		Items:     redirectors,
 		Templates: templates,
 		Size:      4,
 	}
 
 	index, _, err := prompt.Run()
 
-	return r.Tuns[index], err
+	return redirectors[index].Session, redirectors[index].Redirector, err
 }
 
-func selectListener(client pb.LigoloClient) (*pb.Listener, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	r, err := client.ListListeners(ctx, &pb.Empty{})
+func Run(operService *operator.OperatorService, certService *certificate.CertificateService) {
+	operator, err := selectCredentials(operService)
 	if err != nil {
-		return nil, err
+		fmt.Printf("error: %v", err)
+		return
 	}
 
-	if len(r.Listeners) < 1 {
-		return nil, errors.New("no active listeners")
-	}
-
-	templates := &promptui.SelectTemplates{
-		Label:    "{{ . }}",
-		Active:   "-> {{ .Alias | red }}",
-		Inactive: "{{ .Alias | cyan }}",
-		Selected: "Selected: {{ .Alias | green }}",
-		Details: `
---------- Listener ----------
-{{ "Alias:" | faint }}	{{ .Alias }}
-{{ "From:" | faint }}	{{ .From }}
-{{ "To:" | faint }}	{{ .To }}`,
-	}
-
-	prompt := promptui.Select{
-		Label:     "Select listener",
-		Items:     r.Listeners,
-		Templates: templates,
-		Size:      4,
-	}
-
-	index, _, err := prompt.Run()
-
-	return r.Listeners[index], err
-}
-
-func Run(store *storage.Store) {
-	operatorCfg := selectCredentials(store)
-	operatorCert, err := tls.X509KeyPair(operatorCfg.OperatorCert, operatorCfg.OperatorKey)
+	err = operator.Connect()
 	if err != nil {
-		panic(err)
+		fmt.Printf("error: %v", err)
+		return
 	}
+	defer operator.Disconnect()
 
-	ca := x509.NewCertPool()
-	if ok := ca.AppendCertsFromPEM(operatorCfg.CACert); !ok {
-		panic("failed to parse CACert")
-	}
-
-	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{operatorCert},
-		RootCAs:            ca,
-		InsecureSkipVerify: true,
-		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
-			cert, err := x509.ParseCertificate(rawCerts[0])
-			if err != nil {
-				return err
-			}
-
-			options := x509.VerifyOptions{
-				Roots: ca,
-			}
-			if options.Roots == nil {
-				return errors.New("no root certificate")
-			}
-			if _, err := cert.Verify(options); err != nil {
-				return err
-			}
-
-			return nil
-		},
-	}
-
-	conn, err := grpc.Dial(operatorCfg.Server,
-		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(20*1024*1024)),
-	)
-	if err != nil {
-		printErr("did not connect: %s", err)
-	}
-	defer conn.Close()
-
-	client := pb.NewLigoloClient(conn)
-
-	eventStream, err := client.Join(context.Background(), &pb.Empty{})
-	if err != nil {
-		panic(err)
-	}
-
-	go handleEvents(eventStream)
+	go handleEvents(operator)
 
 	relayCommand := &grumble.Command{
 		Name:      "relay",
@@ -286,22 +207,33 @@ func Run(store *storage.Store) {
 
 	relayCommand.AddCommand(&grumble.Command{
 		Name:  "start",
-		Help:  "Start relaying connection between agent and tun",
+		Help:  "Start relaying traffic through session",
 		Usage: "relay start",
 		Run: func(c *grumble.Context) error {
-			selected_agent, err := selectAgent(client)
+			var sessions []*pb.Session
+			allSessions, err := getSessions(operator)
 			if err != nil {
 				return err
 			}
 
-			selected_tun, err := selectTun(client)
+			for _, session := range allSessions {
+				if !session.IsRelaying && session.IsConnected {
+					sessions = append(sessions, session)
+				}
+			}
+
+			if len(sessions) < 1 {
+				return errors.New("no sessions available")
+			}
+
+			selectedSession, err := selectSession(sessions)
 			if err != nil {
 				return err
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 			defer cancel()
-			_, err = client.RelayStart(ctx, &pb.RelayStartReq{AgentAlias: selected_agent.Alias, TunAlias: selected_tun.Alias})
+			_, err = operator.Client().StartRelay(ctx, &pb.StartRelayReq{SessionID: selectedSession.ID})
 
 			if err != nil {
 				return err
@@ -313,18 +245,333 @@ func Run(store *storage.Store) {
 
 	relayCommand.AddCommand(&grumble.Command{
 		Name:  "stop",
-		Help:  "Stop relaying connection between agent and tun",
+		Help:  "Stop relaying traffic through session",
 		Usage: "relay stop",
 		Run: func(c *grumble.Context) error {
-			selected_agent, err := selectAgent(client)
+			var sessions []*pb.Session
+			allSessions, err := getSessions(operator)
+			if err != nil {
+				return err
+			}
 
+			for _, session := range allSessions {
+				if session.IsConnected && session.IsRelaying {
+					sessions = append(sessions, session)
+				}
+			}
+
+			if len(sessions) < 1 {
+				return errors.New("no sessions available")
+			}
+
+			selectedSession, err := selectSession(sessions)
 			if err != nil {
 				return err
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 			defer cancel()
-			_, err = client.RelayStop(ctx, &pb.RelayStopReq{AgentAlias: selected_agent.Alias})
+			_, err = operator.Client().StopRelay(ctx, &pb.StopRelayReq{SessionID: selectedSession.ID})
+
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	})
+
+	sessionCommand := &grumble.Command{
+		Name:      "session",
+		Help:      "Session management",
+		HelpGroup: "Sessions",
+	}
+	App.AddCommand(sessionCommand)
+
+	sessionCommand.AddCommand(&grumble.Command{
+		Name:  "list",
+		Help:  "List sessions",
+		Usage: "session list",
+		Run: func(c *grumble.Context) error {
+			var sessions []*pb.Session
+			sessions, err := getSessions(operator)
+			if err != nil {
+				return err
+			}
+
+			if len(sessions) < 1 {
+				return errors.New("no sessions available")
+			}
+
+			t := table.NewWriter()
+			t.SetStyle(table.StyleLight)
+			t.SetTitle("Sessions")
+			t.AppendHeader(table.Row{"Alias", "Hostname", "Interfaces", "Routes", "Redirectors", "Connected", "Relaying"})
+
+			for _, session := range sessions {
+				var routes []string
+				for _, route := range session.Tun.Routes {
+					ip := route.Cidr
+					if route.IsLoopback {
+						ip += " (loopback)"
+					}
+					routes = append(routes, ip)
+				}
+
+				var IPs []string
+				for _, iface := range session.Interfaces {
+					IPs = append(IPs, iface.IPs...)
+				}
+
+				var redirectors []string
+				for _, redirector := range session.Redirectors {
+					redirectors = append(redirectors, fmt.Sprintf("%s --(%s)-> %s", redirector.From, redirector.Protocol, redirector.To))
+				}
+
+				t.AppendRow(table.Row{
+					session.Alias,
+					session.Hostname,
+					strings.Join(IPs, "\n"),
+					strings.Join(routes, "\n"),
+					strings.Join(redirectors, "\n"),
+					session.IsConnected,
+					session.IsRelaying,
+				})
+
+			}
+
+			c.App.Println(t.Render())
+
+			return nil
+		},
+	})
+
+	sessionCommand.AddCommand(&grumble.Command{
+		Name:  "rename",
+		Help:  "Rename session (change alias)",
+		Usage: "session rename new-alias",
+		Args: func(a *grumble.Args) {
+			a.String("alias", "session alias")
+		},
+		Run: func(c *grumble.Context) error {
+			sessions, err := getSessions(operator)
+			if err != nil {
+				return err
+			}
+
+			if len(sessions) < 1 {
+				return errors.New("no sessions available")
+			}
+
+			selectedSession, err := selectSession(sessions)
+			if err != nil {
+				return err
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+
+			_, err = operator.Client().RenameSession(ctx, &pb.RenameSessionReq{
+				SessionID: selectedSession.ID,
+				Alias:     c.Args.String("alias"),
+			})
+
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	})
+
+	routeCommand := &grumble.Command{
+		Name:      "route",
+		Help:      "Routes management",
+		HelpGroup: "Routes",
+	}
+	App.AddCommand(routeCommand)
+
+	routeCommand.AddCommand(&grumble.Command{
+		Name:  "new",
+		Help:  "Add route to the session",
+		Usage: "route new route_1 [route_2 route_3 ... route_N]",
+		Args: func(a *grumble.Args) {
+			a.StringList("routes", "Routes list")
+		},
+		Flags: func(f *grumble.Flags) {
+			f.BoolL("loopback", false, "set route to remote's loopback")
+		},
+		Run: func(c *grumble.Context) error {
+			sessions, err := getSessions(operator)
+			if err != nil {
+				return err
+			}
+
+			if len(sessions) < 1 {
+				return errors.New("no sessions available")
+			}
+
+			selectedSession, err := selectSession(sessions)
+			if err != nil {
+				return err
+			}
+
+			isLoopback := c.Flags.Bool("loopback")
+
+			for _, route := range c.Args.StringList("routes") {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+				defer cancel()
+				r, err := operator.Client().AddRoute(ctx, &pb.AddRouteReq{
+					SessionID: selectedSession.ID,
+					Route:     &pb.Route{Cidr: route, IsLoopback: isLoopback},
+				})
+				if err != nil {
+					return err
+				}
+
+				if r.OverlappingSession != nil {
+					return fmt.Errorf("your route overlaps with routing of TUN %s", r.OverlappingSession.ID)
+				}
+			}
+
+			return nil
+		},
+	})
+
+	routeCommand.AddCommand(&grumble.Command{
+		Name:  "delete",
+		Help:  "Delete route from session",
+		Usage: "route delete route_1 [route_2 route_3 ... route_N]",
+		Args: func(a *grumble.Args) {
+			a.StringList("routes", "Routes list")
+		},
+		Run: func(c *grumble.Context) error {
+			sessions, err := getSessions(operator)
+			if err != nil {
+				return err
+			}
+
+			if len(sessions) < 1 {
+				return errors.New("no sessions available")
+			}
+
+			selectedSession, err := selectSession(sessions)
+			if err != nil {
+				return err
+			}
+
+			for _, route := range c.Args.StringList("routes") {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+				defer cancel()
+				_, err := operator.Client().DelRoute(ctx, &pb.DelRouteReq{
+					SessionID: selectedSession.ID,
+					Cidr:      route,
+				})
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		},
+	})
+
+	redirectorCommand := &grumble.Command{
+		Name:      "redirector",
+		Help:      "Redirector management",
+		HelpGroup: "Redirector",
+	}
+	App.AddCommand(redirectorCommand)
+
+	redirectorCommand.AddCommand(&grumble.Command{
+		Name:  "new",
+		Help:  "Set up traffic redirector from session to destination",
+		Usage: "redirector add --from [listening_address:port] --to [destination_address:port] --tcp/--udp",
+		Flags: func(f *grumble.Flags) {
+			f.BoolL("tcp", false, "Use TCP listener")
+			f.BoolL("udp", false, "Use UDP listener")
+			f.StringL("from", "", "The session listening address:port")
+			f.StringL("to", "", "Where to redirect connections")
+
+		},
+		Run: func(c *grumble.Context) error {
+			var netProto string
+			if c.Flags.Bool("tcp") && c.Flags.Bool("udp") {
+				return errors.New("choose TCP or UDP, not both")
+			}
+			if c.Flags.Bool("tcp") {
+				netProto = "tcp"
+			}
+			if c.Flags.Bool("udp") {
+				netProto = "udp"
+			}
+			if netProto == "" {
+				netProto = "tcp" // Use TCP by default.
+			}
+
+			sessions, err := getSessions(operator)
+			if err != nil {
+				return err
+			}
+
+			if len(sessions) < 1 {
+				return errors.New("no sessions available")
+			}
+
+			selectedSession, err := selectSession(sessions)
+			if err != nil {
+				return err
+			}
+
+			from := c.Flags.String("from")
+			to := c.Flags.String("to")
+
+			// Check if specified IP is valid.
+			if _, _, err := net.SplitHostPort(from); err != nil {
+				return fmt.Errorf("--from is invalid: %s", err)
+			}
+			if _, _, err := net.SplitHostPort(to); err != nil {
+				return fmt.Errorf("--to is invalid: %s", err)
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+			_, err = operator.Client().AddRedirector(ctx, &pb.AddRedirectorReq{
+				SessionID: selectedSession.ID,
+				Protocol:  netProto,
+				From:      from,
+				To:        to,
+			})
+
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	})
+
+	redirectorCommand.AddCommand(&grumble.Command{
+		Name:  "delete",
+		Help:  "Delete a redirector",
+		Usage: "listener delete",
+		Run: func(c *grumble.Context) error {
+			sessions, err := getSessions(operator)
+			if err != nil {
+				return err
+			}
+
+			selectedSession, selectedRedirector, err := selectRedirector(sessions)
+			if err != nil {
+				return err
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+			_, err = operator.Client().DelRedirector(ctx, &pb.DelRedirectorReq{
+				SessionID:    selectedSession.ID,
+				RedirectorID: selectedRedirector.ID,
+			})
 
 			if err != nil {
 				return err
@@ -337,85 +584,9 @@ func Run(store *storage.Store) {
 	agentCommand := &grumble.Command{
 		Name:      "agent",
 		Help:      "Agent management",
-		HelpGroup: "Agent",
+		HelpGroup: "Agents",
 	}
 	App.AddCommand(agentCommand)
-
-	agentCommand.AddCommand(&grumble.Command{
-		Name:  "list",
-		Help:  "List currently running agents",
-		Usage: "agent list",
-		Run: func(c *grumble.Context) error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			r, err := client.ListAgents(ctx, &pb.Empty{})
-			if err != nil {
-				return err
-			}
-
-			t := table.NewWriter()
-			t.SetStyle(table.StyleLight)
-			t.SetTitle("Active agents")
-			t.AppendHeader(table.Row{"Alias", "Hostname", "Agent interfaces", "Connected TUN", "Routes", "Is loopback"})
-
-			for _, agent := range r.Agents {
-				if agent.Tun != nil {
-					var routes []string
-					for _, route := range agent.Tun.Routes {
-						routes = append(routes, route.Cidr)
-					}
-
-					t.AppendRow(table.Row{
-						agent.Alias,
-						agent.Hostname,
-						strings.Join(agent.IPs, "\n"),
-						agent.Tun.Alias,
-						strings.Join(routes, "\n"),
-						agent.Tun.IsLoopback,
-					})
-				} else {
-					t.AppendRow(table.Row{
-						agent.Alias,
-						agent.Hostname,
-						strings.Join(agent.IPs, "\n"),
-					})
-				}
-			}
-
-			c.App.Println(t.Render())
-
-			return nil
-		},
-	})
-
-	agentCommand.AddCommand(&grumble.Command{
-		Name:  "rename",
-		Help:  "Rename existing agent session",
-		Usage: "agent rename new-name",
-		Args: func(a *grumble.Args) {
-			a.String("name", "New name of the agent")
-		},
-		Run: func(c *grumble.Context) error {
-			agent, err := selectAgent(client)
-			if err != nil {
-				return err
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-
-			_, err = client.RenameAgent(ctx, &pb.RenameAgentReq{
-				OldAlias: agent.Alias,
-				NewAlias: c.Args.String("name"),
-			})
-
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	})
 
 	agentCommand.AddCommand(&grumble.Command{
 		Name:  "generate",
@@ -462,7 +633,7 @@ func Run(store *storage.Store) {
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 			defer cancel()
-			r, err := client.GenerateAgent(ctx, &pb.GenerateAgentReq{
+			r, err := operator.Client().GenerateAgent(ctx, &pb.GenerateAgentReq{
 				Server:      server,
 				GOOS:        goos,
 				GOARCH:      goarch,
@@ -490,368 +661,6 @@ func Run(store *storage.Store) {
 		},
 	})
 
-	tunCommand := &grumble.Command{
-		Name:      "tun",
-		Help:      "TUN management",
-		HelpGroup: "TUNs",
-	}
-	App.AddCommand(tunCommand)
-
-	tunCommand.AddCommand(&grumble.Command{
-		Name:  "list",
-		Help:  "List currently running TUNs",
-		Usage: "tun list",
-		Run: func(c *grumble.Context) error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			r, err := client.ListTuns(ctx, &pb.Empty{})
-			if err != nil {
-				return err
-			}
-
-			t := table.NewWriter()
-			t.SetStyle(table.StyleLight)
-			t.SetTitle("Active TUNs")
-			t.AppendHeader(table.Row{"Alias", "Routes", "Is loopback"})
-
-			for _, tun := range r.GetTuns() {
-				var routes []string
-				for _, route := range tun.Routes {
-					routes = append(routes, route.Cidr)
-				}
-				t.AppendRow(table.Row{tun.Alias, strings.Join(routes, "\n"), tun.IsLoopback})
-			}
-			c.App.Println(t.Render())
-			return nil
-		},
-	})
-
-	tunCommand.AddCommand(&grumble.Command{
-		Name:  "new",
-		Help:  "Create new TUN",
-		Usage: "tun new",
-		Flags: func(f *grumble.Flags) {
-			f.StringL("name", "", "System name of the TUN")
-			f.BoolL("loopback", false, "Make tun route to agent's localhost")
-		},
-		Run: func(c *grumble.Context) error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			_, err := client.NewTun(ctx, &pb.NewTunReq{
-				Name:       c.Flags.String("name"),
-				IsLoopback: c.Flags.Bool("loopback"),
-			})
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	})
-
-	tunCommand.AddCommand(&grumble.Command{
-		Name:  "rename",
-		Help:  "Rename created TUN",
-		Usage: "tun rename new-name",
-		Args: func(a *grumble.Args) {
-			a.String("name", "New name for TUN")
-		},
-		Run: func(c *grumble.Context) error {
-			tun, err := selectTun(client)
-			if err != nil {
-				return err
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-
-			_, err = client.RenameTun(ctx, &pb.RenameTunReq{
-				OldAlias: tun.Alias,
-				NewAlias: c.Args.String("name"),
-			})
-
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	})
-
-	tunCommand.AddCommand(&grumble.Command{
-		Name:  "delete",
-		Help:  "Delete the TUN",
-		Usage: "tun delete",
-		Run: func(c *grumble.Context) error {
-			tun, err := selectTun(client)
-
-			if err != nil {
-				return err
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			_, err = client.DelTun(ctx, &pb.DelTunReq{
-				TunAlias: tun.Alias,
-			})
-
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	})
-
-	tunRouteCommand := &grumble.Command{
-		Name:      "route",
-		Help:      "Route management for a TUN",
-		HelpGroup: "TUNs",
-	}
-	tunCommand.AddCommand(tunRouteCommand)
-
-	tunRouteCommand.AddCommand(&grumble.Command{
-		Name:  "new",
-		Help:  "Add route to the TUN",
-		Usage: "tun route new route_1 [route_2 route_3 ... route_N]",
-		Args: func(a *grumble.Args) {
-			a.StringList("routes", "Routes list")
-		},
-		Run: func(c *grumble.Context) error {
-			var err error
-			tun, err := selectTun(client)
-
-			if err != nil {
-				return err
-			}
-
-			for _, route := range c.Args.StringList("routes") {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-				defer cancel()
-				r, err := client.NewRoute(ctx, &pb.NewRouteReq{
-					TunAlias: tun.Alias,
-					Cidr:     route,
-				})
-				if err != nil {
-					return err
-				}
-
-				if r.OverlappingTun != nil {
-					return fmt.Errorf("your route overlaps with routing of TUN %s", r.OverlappingTun.Alias)
-				}
-			}
-
-			return nil
-		},
-	})
-
-	tunRouteCommand.AddCommand(&grumble.Command{
-		Name:  "delete",
-		Help:  "Delete route from the TUN",
-		Usage: "tun route delete route_1 [route_2 route_3 ... route_N]",
-		Args: func(a *grumble.Args) {
-			a.StringList("routes", "Routes list")
-		},
-		Run: func(c *grumble.Context) error {
-			var err error
-			tun, err := selectTun(client)
-
-			if err != nil {
-				return err
-			}
-
-			for _, route := range c.Args.StringList("routes") {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-				defer cancel()
-				_, err = client.DelRoute(ctx, &pb.DelRouteReq{
-					TunAlias: tun.Alias,
-					Cidr:     route,
-				})
-
-				if err != nil {
-					printErr("Error deleting route %s: %s", route, err)
-				}
-			}
-
-			return nil
-		},
-	})
-
-	listenerCommand := &grumble.Command{
-		Name:      "listener",
-		Help:      "Listener management",
-		HelpGroup: "Listener",
-	}
-	App.AddCommand(listenerCommand)
-
-	listenerCommand.AddCommand(&grumble.Command{
-		Name:  "list",
-		Help:  "List currently running listeners",
-		Usage: "listener list",
-		Run: func(c *grumble.Context) error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			r, err := client.ListListeners(ctx, &pb.Empty{})
-			if err != nil {
-				printErr("RPC failed: %s", err)
-			}
-
-			t := table.NewWriter()
-			t.SetStyle(table.StyleLight)
-			t.SetTitle("Active listeners")
-			t.AppendHeader(table.Row{"Alias", "Agent", "From", "To"})
-
-			for _, listener := range r.GetListeners() {
-				t.AppendRow(table.Row{listener.Alias, listener.Agent.Alias, listener.From, listener.To})
-			}
-
-			c.App.Println(t.Render())
-			return nil
-		},
-	})
-
-	listenerCommand.AddCommand(&grumble.Command{
-		Name:  "new",
-		Help:  "Listen on the agent and redirect connections to the desired address",
-		Usage: "listener add --from [listening_address:port] --to [destination_address:port] --tcp/--udp",
-		Flags: func(f *grumble.Flags) {
-			f.BoolL("tcp", false, "Use TCP listener")
-			f.BoolL("udp", false, "Use UDP listener")
-			f.StringL("from", "", "The agent listening address:port")
-			f.StringL("to", "", "Where to redirect connections")
-
-		},
-		Run: func(c *grumble.Context) error {
-			var netProto string
-			if c.Flags.Bool("tcp") && c.Flags.Bool("udp") {
-				return errors.New("choose TCP or UDP, not both")
-			}
-			if c.Flags.Bool("tcp") {
-				netProto = "tcp"
-			}
-			if c.Flags.Bool("udp") {
-				netProto = "udp"
-			}
-			if netProto == "" {
-				netProto = "tcp" // Use TCP by default.
-			}
-
-			agent, err := selectAgent(client)
-			if err != nil {
-				return err
-			}
-
-			from := c.Flags.String("from")
-			to := c.Flags.String("to")
-
-			// Check if specified IP is valid.
-			if _, _, err := net.SplitHostPort(from); err != nil {
-				return fmt.Errorf("--from is invalid: %s", err)
-			}
-			if _, _, err := net.SplitHostPort(to); err != nil {
-				return fmt.Errorf("--to is invalid: %s", err)
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			_, err = client.NewListener(ctx, &pb.NewListenerReq{
-				AgentAlias: agent.Alias,
-				Protocol:   netProto,
-				From:       from,
-				To:         to,
-			})
-
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	})
-
-	listenerCommand.AddCommand(&grumble.Command{
-		Name:  "delete",
-		Help:  "Delete a listener",
-		Usage: "listener delete",
-		Run: func(c *grumble.Context) error {
-			listener, err := selectListener(client)
-
-			if err != nil {
-				return err
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			_, err = client.DelListener(ctx, &pb.DelListenerReq{
-				AgentAlias:    listener.Agent.Alias,
-				ListenerAlias: listener.Alias,
-			})
-
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	})
-
-	certCommand := &grumble.Command{
-		Name:      "certificate",
-		Help:      "Certificate management",
-		HelpGroup: "Certificate",
-	}
-	App.AddCommand(certCommand)
-
-	certCommand.AddCommand(&grumble.Command{
-		Name:  "list",
-		Help:  "List certificates",
-		Usage: "certificate list",
-		Run: func(c *grumble.Context) error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			r, err := client.ListCerts(ctx, &pb.Empty{})
-			if err != nil {
-				return err
-			}
-
-			t := table.NewWriter()
-			t.SetStyle(table.StyleLight)
-			t.SetTitle("Certificates")
-			t.AppendHeader(table.Row{"Name", "Expiration date"})
-
-			for _, cert := range r.Certs {
-				t.AppendRow(table.Row{cert.Name, cert.ExpiryDate})
-			}
-			c.App.Println(t.Render())
-
-			return nil
-		},
-	})
-
-	certCommand.AddCommand(&grumble.Command{
-		Name:  "regenerate",
-		Help:  "Regenerate certificate",
-		Usage: "certificate regenerate certificate_name",
-		Args: func(a *grumble.Args) {
-			a.String("name", "Certificate name")
-		},
-		Run: func(c *grumble.Context) error {
-			name := c.Args.String("name")
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			_, err := client.RegenCerts(ctx, &pb.RegenCertsReq{Name: name})
-			if err != nil {
-				return err
-			}
-
-			printOk("Certificate %s regenerated", name)
-
-			return nil
-		},
-	})
-
-	// Grumble doesn't like cli args
 	os.Args = []string{}
 	App.Run()
 }

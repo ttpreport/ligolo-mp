@@ -13,17 +13,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/yamux"
-	"github.com/ttpreport/ligolo-mp/internal/core/agents/neterror"
-	"github.com/ttpreport/ligolo-mp/internal/core/agents/smartping"
-	"github.com/ttpreport/ligolo-mp/internal/core/assets/agent"
-	"github.com/ttpreport/ligolo-mp/internal/core/protocol"
-	"github.com/ttpreport/ligolo-mp/internal/core/relay"
+	"github.com/ttpreport/ligolo-mp/internal/netstack/neterror"
+	"github.com/ttpreport/ligolo-mp/internal/netstack/smartping"
+	"github.com/ttpreport/ligolo-mp/internal/protocol"
+	"github.com/ttpreport/ligolo-mp/internal/relay"
 	goproxy "golang.org/x/net/proxy"
 )
 
 var (
-	listenerMap map[int32]agent.Listener
-	listenerID  int32
+	redirectorMap map[string]relay.Redirector
 )
 
 func main() {
@@ -87,7 +85,7 @@ func main() {
 
 	var conn net.Conn
 
-	listenerMap = make(map[int32]agent.Listener)
+	redirectorMap = make(map[string]relay.Redirector)
 
 	for {
 		var err error
@@ -225,75 +223,80 @@ func handleConn(conn net.Conn) {
 		}
 
 		infoResponse := protocol.InfoReplyPacket{
-			Name:       fmt.Sprintf("%s@%s", username, hostname),
-			Hostname:   hostname,
-			Interfaces: protocol.NewNetInterfaces(nonloopbackIfaces),
-			Listeners:  protocol.NewListenerInterface(listenerMap),
+			Name:        fmt.Sprintf("%s@%s", username, hostname),
+			Hostname:    hostname,
+			Interfaces:  protocol.NewNetInterfaces(nonloopbackIfaces),
+			Redirectors: protocol.NewRedirectorInterface(redirectorMap),
 		}
 
 		encoder.Encode(protocol.Envelope{
 			Type:    protocol.MessageInfoReply,
 			Payload: infoResponse,
 		})
-	case protocol.MessageListenerCloseRequest:
-		closeRequest := e.(protocol.ListenerCloseRequestPacket)
+	case protocol.MessageRedirectorCloseRequest:
+		closeRequest := e.(protocol.RedirectorCloseRequestPacket)
 		encoder := protocol.NewEncoder(conn)
 
 		var err error
-		if lis, ok := listenerMap[closeRequest.ListenerID]; ok {
+		if lis, ok := redirectorMap[closeRequest.ID]; ok {
 			err = lis.Close()
-		} else {
-			err = errors.New("invalid listener id")
 		}
 
-		listenerResponse := protocol.ListenerCloseResponsePacket{
+		redirectorResponse := protocol.RedirectorCloseResponsePacket{
 			Err: err != nil,
 		}
 		if err != nil {
-			listenerResponse.ErrString = err.Error()
+			redirectorResponse.ErrString = err.Error()
 		}
 
-		delete(listenerMap, closeRequest.ListenerID)
+		delete(redirectorMap, closeRequest.ID)
 
 		encoder.Encode(protocol.Envelope{
-			Type:    protocol.MessageListenerCloseResponse,
-			Payload: listenerResponse,
+			Type:    protocol.MessageRedirectorCloseResponse,
+			Payload: redirectorResponse,
 		})
 
-	case protocol.MessageListenerRequest:
-		listenRequest := e.(protocol.ListenerRequestPacket)
+	case protocol.MessageRedirectorRequest:
+		redirectorRequest := e.(protocol.RedirectorRequestPacket)
 		encoder := protocol.NewEncoder(conn)
 
-		listener, err := agent.NewListener(listenRequest.Network, listenRequest.From, listenRequest.To)
+		var redirectorResponse protocol.RedirectorResponsePacket
+		redirector, err := relay.NewLRedirector(redirectorRequest.ID, redirectorRequest.Network, redirectorRequest.From, redirectorRequest.To)
 		if err != nil {
-			listenerResponse := protocol.ListenerResponsePacket{
-				ListenerID: 0,
-				Err:        true,
-				ErrString:  err.Error(),
+			redirectorResponse = protocol.RedirectorResponsePacket{
+				ID:        redirector.ID,
+				Err:       true,
+				ErrString: err.Error(),
 			}
-			encoder.Encode(protocol.Envelope{
-				Type:    protocol.MessageListenerResponse,
-				Payload: listenerResponse,
-			})
-			return
-		}
+		} else {
+			if _, exists := redirectorMap[redirector.ID]; exists {
+				redirectorResponse = protocol.RedirectorResponsePacket{
+					ID:        redirector.ID,
+					Err:       true,
+					ErrString: "redirector already exists",
+				}
+			} else {
+				redirectorResponse = protocol.RedirectorResponsePacket{
+					ID:        redirector.ID,
+					Err:       false,
+					ErrString: "",
+				}
+				redirectorMap[redirector.ID] = redirector
 
-		listenerResponse := protocol.ListenerResponsePacket{
-			ListenerID: listenerID,
-			Err:        false,
-			ErrString:  "",
+				go redirector.ListenAndRelay()
+			}
 		}
-		listenerMap[listenerID] = listener
-		listenerID++
 
 		encoder.Encode(protocol.Envelope{
-			Type:    protocol.MessageListenerResponse,
-			Payload: listenerResponse,
+			Type:    protocol.MessageRedirectorResponse,
+			Payload: redirectorResponse,
 		})
-
-		go listener.ListenAndRelay()
-	case protocol.MessageClose:
+	case protocol.MessageDisconnectRequest:
+		encoder := protocol.NewEncoder(conn)
+		encoder.Encode(protocol.Envelope{
+			Type:    protocol.MessageRedirectorResponse,
+			Payload: protocol.DisconnectResponsePacket{},
+		})
 		os.Exit(0)
-
 	}
 }

@@ -1,6 +1,29 @@
+# github.com/76creates/stickers v1.3.0
+## explicit; go 1.18
+# github.com/antlabs/stl v0.0.1
+## explicit; go 1.13
+github.com/antlabs/stl/list
+# github.com/antlabs/timer v0.0.11
+## explicit; go 1.19
+github.com/antlabs/timer
+# github.com/atotto/clipboard v0.1.4
+## explicit
+# github.com/aymanbagabas/go-osc52/v2 v2.0.1
+## explicit; go 1.16
+# github.com/bwmarrin/snowflake v0.3.0
+## explicit
+github.com/bwmarrin/snowflake
+# github.com/charmbracelet/bubbles v0.18.0
+## explicit; go 1.18
+# github.com/charmbracelet/bubbletea v0.25.0
+## explicit; go 1.17
+# github.com/charmbracelet/lipgloss v0.10.0
+## explicit; go 1.18
 # github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 ## explicit
 github.com/chzyer/readline
+# github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81
+## explicit; go 1.13
 # github.com/desertbit/closer/v3 v3.1.3
 ## explicit; go 1.12
 github.com/desertbit/closer/v3
@@ -16,18 +39,61 @@ github.com/desertbit/grumble
 # github.com/desertbit/readline v1.5.1
 ## explicit; go 1.12
 github.com/desertbit/readline
-# github.com/docker/docker v24.0.7+incompatible
-## explicit
-github.com/docker/docker/pkg/namesgenerator
-# github.com/dustin/go-humanize v1.0.1
-## explicit; go 1.16
-github.com/dustin/go-humanize
+# github.com/evertras/bubble-table v0.16.1
+## explicit; go 1.17
 # github.com/fatih/color v1.16.0
 ## explicit; go 1.17
 github.com/fatih/color
+# github.com/gdamore/encoding v1.0.0
+## explicit; go 1.9
+github.com/gdamore/encoding
+# github.com/gdamore/tcell v1.3.0
+## explicit; go 1.12
+# github.com/gdamore/tcell/v2 v2.7.4
+## explicit; go 1.12
+github.com/gdamore/tcell/v2
+github.com/gdamore/tcell/v2/terminfo
+github.com/gdamore/tcell/v2/terminfo/a/aixterm
+github.com/gdamore/tcell/v2/terminfo/a/alacritty
+github.com/gdamore/tcell/v2/terminfo/a/ansi
+github.com/gdamore/tcell/v2/terminfo/b/beterm
+github.com/gdamore/tcell/v2/terminfo/base
+github.com/gdamore/tcell/v2/terminfo/c/cygwin
+github.com/gdamore/tcell/v2/terminfo/d/dtterm
+github.com/gdamore/tcell/v2/terminfo/dynamic
+github.com/gdamore/tcell/v2/terminfo/e/emacs
+github.com/gdamore/tcell/v2/terminfo/extended
+github.com/gdamore/tcell/v2/terminfo/f/foot
+github.com/gdamore/tcell/v2/terminfo/g/gnome
+github.com/gdamore/tcell/v2/terminfo/h/hpterm
+github.com/gdamore/tcell/v2/terminfo/k/konsole
+github.com/gdamore/tcell/v2/terminfo/k/kterm
+github.com/gdamore/tcell/v2/terminfo/l/linux
+github.com/gdamore/tcell/v2/terminfo/p/pcansi
+github.com/gdamore/tcell/v2/terminfo/r/rxvt
+github.com/gdamore/tcell/v2/terminfo/s/screen
+github.com/gdamore/tcell/v2/terminfo/s/simpleterm
+github.com/gdamore/tcell/v2/terminfo/s/sun
+github.com/gdamore/tcell/v2/terminfo/t/tmux
+github.com/gdamore/tcell/v2/terminfo/v/vt100
+github.com/gdamore/tcell/v2/terminfo/v/vt102
+github.com/gdamore/tcell/v2/terminfo/v/vt220
+github.com/gdamore/tcell/v2/terminfo/v/vt320
+github.com/gdamore/tcell/v2/terminfo/v/vt400
+github.com/gdamore/tcell/v2/terminfo/v/vt420
+github.com/gdamore/tcell/v2/terminfo/v/vt52
+github.com/gdamore/tcell/v2/terminfo/w/wy50
+github.com/gdamore/tcell/v2/terminfo/w/wy60
+github.com/gdamore/tcell/v2/terminfo/w/wy99_ansi
+github.com/gdamore/tcell/v2/terminfo/x/xfce
+github.com/gdamore/tcell/v2/terminfo/x/xterm
+github.com/gdamore/tcell/v2/terminfo/x/xterm_kitty
 # github.com/go-ping/ping v1.1.0
 ## explicit; go 1.14
 github.com/go-ping/ping
+# github.com/gofrs/flock v0.8.1
+## explicit
+github.com/gofrs/flock
 # github.com/golang/protobuf v1.5.3
 ## explicit; go 1.9
 github.com/golang/protobuf/jsonpb
@@ -39,7 +105,7 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/google/btree v1.1.2
 ## explicit; go 1.18
 github.com/google/btree
-# github.com/google/uuid v1.4.0
+# github.com/google/uuid v1.5.0
 ## explicit
 github.com/google/uuid
 # github.com/hashicorp/errwrap v1.1.0
@@ -55,9 +121,9 @@ github.com/hashicorp/yamux
 ## explicit; go 1.16
 github.com/jedib0t/go-pretty/v6/table
 github.com/jedib0t/go-pretty/v6/text
-# github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-## explicit
-github.com/kballard/go-shellquote
+# github.com/lucasb-eyer/go-colorful v1.2.0
+## explicit; go 1.12
+github.com/lucasb-eyer/go-colorful
 # github.com/manifoldco/promptui v0.9.0
 ## explicit; go 1.12
 github.com/manifoldco/promptui
@@ -69,15 +135,39 @@ github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.20
 ## explicit; go 1.15
 github.com/mattn/go-isatty
-# github.com/mattn/go-runewidth v0.0.13
+# github.com/mattn/go-localereader v0.0.1
+## explicit
+# github.com/mattn/go-runewidth v0.0.15
 ## explicit; go 1.9
 github.com/mattn/go-runewidth
-# github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
-## explicit; go 1.12
-github.com/remyoudompheng/bigfft
-# github.com/rivo/uniseg v0.2.0
-## explicit; go 1.12
+# github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b
+## explicit; go 1.17
+# github.com/muesli/cancelreader v0.2.2
+## explicit; go 1.17
+# github.com/muesli/reflow v0.3.0
+## explicit; go 1.13
+# github.com/muesli/termenv v0.15.2
+## explicit; go 1.17
+# github.com/nutsdb/nutsdb v1.0.4
+## explicit; go 1.18
+github.com/nutsdb/nutsdb
+# github.com/pkg/errors v0.9.1
+## explicit
+github.com/pkg/errors
+# github.com/rivo/tview v0.0.0-20240807205129-e4c497cc59ed
+## explicit; go 1.18
+github.com/rivo/tview
+# github.com/rivo/uniseg v0.4.7
+## explicit; go 1.18
 github.com/rivo/uniseg
+# github.com/rs/xid v1.5.0
+## explicit; go 1.12
+github.com/rs/xid
+# github.com/stretchr/testify v1.8.1
+## explicit; go 1.13
+# github.com/tidwall/btree v1.6.0
+## explicit; go 1.19
+github.com/tidwall/btree
 # github.com/ttpreport/gvisor-ligolo v0.0.0-20240123134145-a858404967ba
 ## explicit; go 1.20
 github.com/ttpreport/gvisor-ligolo/pkg/abi/linux/errno
@@ -139,9 +229,15 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 ## explicit; go 1.12
 github.com/vishvananda/netns
-# golang.org/x/mod v0.14.0
-## explicit; go 1.18
-golang.org/x/mod/semver
+# github.com/xujiajun/mmap-go v1.0.1
+## explicit
+github.com/xujiajun/mmap-go
+# github.com/xujiajun/utils v0.0.0-20220904132955-5f7c5b914235
+## explicit; go 1.13
+github.com/xujiajun/utils/filesystem
+github.com/xujiajun/utils/strconv2
+# gitlab.com/tslocum/cview v1.4.5
+## explicit; go 1.12
 # golang.org/x/net v0.19.0
 ## explicit; go 1.18
 golang.org/x/net/bpf
@@ -159,13 +255,19 @@ golang.org/x/net/trace
 # golang.org/x/sync v0.5.0
 ## explicit; go 1.18
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.15.0
+# golang.org/x/sys v0.17.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
+golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# golang.org/x/term v0.17.0
+## explicit; go 1.18
+golang.org/x/term
 # golang.org/x/text v0.14.0
 ## explicit; go 1.18
+golang.org/x/text/encoding
+golang.org/x/text/encoding/internal/identifier
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
@@ -173,25 +275,6 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.3.0
 ## explicit
 golang.org/x/time/rate
-# golang.org/x/tools v0.16.0
-## explicit; go 1.18
-golang.org/x/tools/go/gcexportdata
-golang.org/x/tools/go/internal/packagesdriver
-golang.org/x/tools/go/packages
-golang.org/x/tools/go/types/objectpath
-golang.org/x/tools/internal/event
-golang.org/x/tools/internal/event/core
-golang.org/x/tools/internal/event/keys
-golang.org/x/tools/internal/event/label
-golang.org/x/tools/internal/event/tag
-golang.org/x/tools/internal/gcimporter
-golang.org/x/tools/internal/gocommand
-golang.org/x/tools/internal/packagesinternal
-golang.org/x/tools/internal/pkgbits
-golang.org/x/tools/internal/tokeninternal
-golang.org/x/tools/internal/typeparams
-golang.org/x/tools/internal/typesinternal
-golang.org/x/tools/internal/versions
 # golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224
 ## explicit; go 1.17
 golang.zx2c4.com/wintun
@@ -289,59 +372,5 @@ google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
-# lukechampine.com/uint128 v1.3.0
-## explicit; go 1.12
-lukechampine.com/uint128
-# modernc.org/cc/v3 v3.41.0
-## explicit; go 1.17
-modernc.org/cc/v3
-# modernc.org/ccgo/v3 v3.16.15
-## explicit; go 1.18
-modernc.org/ccgo/v3/lib
-# modernc.org/libc v1.35.0
-## explicit; go 1.20
-modernc.org/libc
-modernc.org/libc/errno
-modernc.org/libc/fcntl
-modernc.org/libc/fts
-modernc.org/libc/grp
-modernc.org/libc/honnef.co/go/netdb
-modernc.org/libc/langinfo
-modernc.org/libc/limits
-modernc.org/libc/netdb
-modernc.org/libc/netinet/in
-modernc.org/libc/poll
-modernc.org/libc/pthread
-modernc.org/libc/pwd
-modernc.org/libc/signal
-modernc.org/libc/stdio
-modernc.org/libc/stdlib
-modernc.org/libc/sys/socket
-modernc.org/libc/sys/stat
-modernc.org/libc/sys/types
-modernc.org/libc/termios
-modernc.org/libc/time
-modernc.org/libc/unistd
-modernc.org/libc/utime
-modernc.org/libc/uuid
-modernc.org/libc/uuid/uuid
-modernc.org/libc/wctype
-# modernc.org/mathutil v1.6.0
-## explicit; go 1.18
-modernc.org/mathutil
-# modernc.org/memory v1.7.2
-## explicit; go 1.18
-modernc.org/memory
-# modernc.org/opt v0.1.3
+# tryffel.net/go/twidgets v0.0.0-20210214160545-36dc9b5e5b8a
 ## explicit; go 1.13
-modernc.org/opt
-# modernc.org/sqlite v1.27.0
-## explicit; go 1.19
-modernc.org/sqlite
-modernc.org/sqlite/lib
-# modernc.org/strutil v1.2.0
-## explicit; go 1.18
-modernc.org/strutil
-# modernc.org/token v1.1.0
-## explicit
-modernc.org/token

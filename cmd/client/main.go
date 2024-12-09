@@ -4,10 +4,11 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/ttpreport/ligolo-mp/cmd/client/cli"
-	"github.com/ttpreport/ligolo-mp/internal/common/config"
-	"github.com/ttpreport/ligolo-mp/internal/common/operator"
-	"github.com/ttpreport/ligolo-mp/internal/core/storage"
+	"github.com/ttpreport/ligolo-mp/cmd/client/tui"
+	"github.com/ttpreport/ligolo-mp/internal/certificate"
+	"github.com/ttpreport/ligolo-mp/internal/config"
+	"github.com/ttpreport/ligolo-mp/internal/operator"
+	"github.com/ttpreport/ligolo-mp/internal/storage"
 )
 
 func main() {
@@ -15,24 +16,29 @@ func main() {
 
 	flag.Parse()
 
-	storage, err := storage.New(config.GetRootAppDir("client"))
+	cfg := &config.Config{
+		Environment: "client",
+	}
+
+	storage, err := storage.New(cfg.GetRootAppDir())
 	if err != nil {
 		panic(fmt.Sprintf("could not connect to storage: %v", err))
 	}
 
-	if err = storage.InitClient(); err != nil {
-		panic(err)
-	}
+	operRepo, _ := operator.NewOperatorRepository(storage)
+	certRepo, _ := certificate.NewCertificateRepository(storage)
+
+	certService := certificate.NewCertificateService(certRepo)
+	operService := operator.NewOperatorService(cfg, operRepo, certService)
 
 	if *credsFile == "" {
-		cli.Run(storage)
-	} else {
-		creds, err := operator.LoadFromFile(*credsFile)
-		if err != nil {
-			panic(err)
-		}
+		// cli.Run(operService, certService)
 
-		if err = storage.AddCred(creds.Name, creds.Server, creds.CACert, creds.OperatorCert, creds.OperatorKey); err != nil {
+		app := tui.NewApp(operService)
+		app.Run()
+	} else {
+		_, err := operService.NewOperatorFromFile(*credsFile)
+		if err != nil {
 			panic(err)
 		}
 

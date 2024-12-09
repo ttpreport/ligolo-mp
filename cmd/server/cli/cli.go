@@ -8,10 +8,9 @@ import (
 	"github.com/desertbit/grumble"
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/ttpreport/ligolo-mp/internal/common/config"
-	"github.com/ttpreport/ligolo-mp/internal/common/operator"
-	"github.com/ttpreport/ligolo-mp/internal/core/certs"
-	"github.com/ttpreport/ligolo-mp/internal/core/storage"
+	"github.com/ttpreport/ligolo-mp/internal/certificate"
+	"github.com/ttpreport/ligolo-mp/internal/config"
+	"github.com/ttpreport/ligolo-mp/internal/operator"
 )
 
 var App = grumble.New(&grumble.Config{
@@ -36,7 +35,7 @@ func init() {
 	})
 }
 
-func Run(cfg *config.Config, storage *storage.Store) {
+func Run(cfg *config.Config, certService *certificate.CertificateService, operService *operator.OperatorService) {
 	operatorCommand := &grumble.Command{
 		Name:      "operator",
 		Help:      "Operator management",
@@ -49,7 +48,7 @@ func Run(cfg *config.Config, storage *storage.Store) {
 		Help:  "List operators",
 		Usage: "list",
 		Run: func(c *grumble.Context) error {
-			operators, err := storage.GetOperators()
+			operators, err := operService.AllOperators()
 			if err != nil {
 				return err
 			}
@@ -75,12 +74,14 @@ func Run(cfg *config.Config, storage *storage.Store) {
 		Usage: "new --name [operator_name] --server [ligolo-server:port] --path [path/to/folder/]",
 		Flags: func(f *grumble.Flags) {
 			f.StringL("name", "", "Operator name")
+			f.BoolL("admin", false, "Administrative account")
 			f.StringL("server", "", "Server interface to connect to (host:port)")
 			f.StringL("path", "", "Folder to save operator config to")
 
 		},
 		Run: func(c *grumble.Context) error {
 			name := c.Flags.String("name")
+			admin := c.Flags.Bool("admin")
 			server := c.Flags.String("server")
 			path := c.Flags.String("path")
 
@@ -94,30 +95,13 @@ func Run(cfg *config.Config, storage *storage.Store) {
 				return errors.New("--path is missing")
 			}
 
-			dbCaData, err := storage.GetCert("_ca_")
+			oper, err := operService.NewOperator(name, admin, server)
 			if err != nil {
 				return err
 			}
 
-			cert, key, err := certs.GenerateCert(name, dbCaData.Certificate, dbCaData.Key)
+			fullPath, err := oper.ToFile(path)
 			if err != nil {
-				return err
-			}
-
-			certId, err := storage.AddCert(name, cert, key)
-			if err != nil {
-				return err
-			}
-
-			if err = storage.AddOperator(name, certId); err != nil {
-				storage.DelCert(name)
-				return err
-			}
-
-			fullPath, err := operator.SaveToFile(path, name, server, dbCaData.Certificate, cert, key)
-			if err != nil {
-				storage.DelCert(name)
-				storage.DelOperator(name)
 				return err
 			}
 
@@ -130,9 +114,66 @@ func Run(cfg *config.Config, storage *storage.Store) {
 	operatorCommand.AddCommand(&grumble.Command{
 		Name:  "delete",
 		Help:  "Delete operator",
-		Usage: "delete --name [operator_name]",
+		Usage: "delete --id [operator_id]",
 		Flags: func(f *grumble.Flags) {
-			f.StringL("name", "", "Operator name")
+			f.StringL("id", "", "Operator ID")
+		},
+		Run: func(c *grumble.Context) error {
+			id := c.Flags.String("id")
+
+			if id == "" {
+				return errors.New("--id is missing")
+			}
+
+			oper, err := operService.RemoveOperator(id)
+			if err != nil {
+				return err
+			}
+
+			c.App.Println(fmt.Sprintf("Operator '%s' removed.", oper.Name))
+
+			return nil
+		},
+	})
+
+	certCommand := &grumble.Command{
+		Name:      "certificate",
+		Help:      "Certificate management",
+		HelpGroup: "Certificates",
+	}
+	App.AddCommand(certCommand)
+
+	certCommand.AddCommand(&grumble.Command{
+		Name:  "list",
+		Help:  "List certificates",
+		Usage: "list",
+		Run: func(c *grumble.Context) error {
+			certificates, err := certService.GetAll()
+			if err != nil {
+				return err
+			}
+
+			t := table.NewWriter()
+			t.SetStyle(table.StyleLight)
+			t.SetTitle("Certificates")
+			t.AppendHeader(table.Row{"Name", "Certificate", "Key"})
+
+			for _, cert := range certificates {
+				t.AppendRow(table.Row{cert.Name, cert.Certificate, cert.Key})
+			}
+
+			c.App.Println(t.Render())
+
+			return nil
+		},
+	})
+
+	certCommand.AddCommand(&grumble.Command{
+		Name:  "delete",
+		Help:  "Delete certificate",
+		Usage: "delete --name [certificate_name]",
+		Flags: func(f *grumble.Flags) {
+			f.StringL("name", "", "Certificate name")
 		},
 		Run: func(c *grumble.Context) error {
 			name := c.Flags.String("name")
@@ -141,13 +182,11 @@ func Run(cfg *config.Config, storage *storage.Store) {
 				return errors.New("--name is missing")
 			}
 
-			var err error
-			if err = storage.DelCert(name); err != nil {
+			if err := certService.Remove(name); err != nil {
 				return err
 			}
-			if err = storage.DelOperator(name); err != nil {
-				return err
-			}
+
+			c.App.Println(fmt.Sprintf("Certificate '%s' removed.", name))
 
 			return nil
 		},

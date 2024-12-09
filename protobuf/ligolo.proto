@@ -7,29 +7,26 @@ package ligolo;
 service Ligolo {
   rpc Join(Empty) returns (stream Event) {}
 
-  rpc ListAgents (Empty) returns (ListAgentsResp) {}
-  rpc RenameAgent (RenameAgentReq) returns (Empty) {}
-  
-  rpc NewTun (NewTunReq) returns (Empty) {}
-  rpc DelTun (DelTunReq) returns (Empty) {}
-  rpc ListTuns (Empty) returns (ListTunsResp) {}
-  rpc RenameTun (RenameTunReq) returns (Empty) {}
+  rpc GetSessions (Empty) returns (GetSessionsResp) {}
+  rpc RenameSession (RenameSessionReq) returns (Empty) {}
+  rpc KillSession (KillSessionReq) returns (Empty) {}
 
-  rpc NewRoute (NewRouteReq) returns (NewRouteResp) {}
+  rpc StartRelay (StartRelayReq) returns (Empty) {}
+  rpc StopRelay (StopRelayReq) returns (Empty) {}
+  
+  rpc AddRoute (AddRouteReq) returns (AddRouteResp) {}
   rpc DelRoute (DelRouteReq) returns (Empty) {}
 
-  rpc NewListener (NewListenerReq) returns (Empty) {}
-  rpc DelListener (DelListenerReq) returns (Empty) {}
-  rpc ListListeners (Empty) returns (ListListenersResp) {}
+  rpc AddRedirector (AddRedirectorReq) returns (Empty) {}
+  rpc DelRedirector (DelRedirectorReq) returns (Empty) {}
   
-  rpc RelayStart (RelayStartReq) returns (Empty) {}
-  rpc RelayStop (RelayStopReq) returns (Empty) {}
+  rpc RegenCert (RegenCertReq) returns (Empty) {}
+  rpc NewOperator (NewOperatorReq) returns (NewOperatorResp) {}
 
   rpc GenerateAgent (GenerateAgentReq) returns (GenerateAgentResp) {}
-
-  rpc ListCerts (Empty) returns (ListCertsResp) {}
-  rpc RegenCerts (RegenCertsReq) returns (Empty) {}
 }
+
+// [Objects]
 
 message Empty {}
 
@@ -39,104 +36,98 @@ message Error {
 }
 
 message Event {
-  string Type = 1;
-  bytes Data = 2;
-  string Error = 3;
+  int32 Type = 1;
+  string Data = 2;
 }
 
-message Agent {
-  string Alias = 1;
-  string Hostname = 2;
-  repeated string IPs = 3;
+message Session {
+  string ID = 1;
+  string Alias = 2;
+  string Hostname = 3;
   Tun Tun = 4;
+  bool IsConnected = 5;
+  bool IsRelaying = 6;
+  repeated Interface Interfaces = 7;
+  repeated Redirector Redirectors = 8;
 }
 
 message Tun {
-  string Alias = 1;
+  string Name = 1;
   repeated Route Routes = 2;
-  bool IsLoopback = 3;
+}
+
+message Interface {
+  string Name = 1;
+  repeated string IPs = 2;
 }
 
 message Route {
   string Cidr = 1;
+	bool IsLoopback = 2;
 }
 
-message TunRoute {
-  Tun Tun = 1;
-  Route Route = 2;
-}
-
-message NewTunReq {
-  string Name = 1;
-  bool IsLoopback = 2;
-}
-
-message Listener {
-  Agent Agent = 1;
-  string Alias = 2;
-  string From = 3;
-  string To = 4;
-}
-
-message NewListenerReq {
-  string AgentAlias = 1;
+message Redirector {
+  string ID = 1;
   string Protocol = 2;
   string From = 3;
   string To = 4;
 }
 
-message DelListenerReq {
-  string AgentAlias = 1;
-  string ListenerAlias = 2;
-}
-
-message ListListenersResp {
-  repeated Listener Listeners = 1;
-}
-
-message ListTunsResp {
-  repeated Tun Tuns = 1;
-}
-
-message ListAgentsResp {
-  repeated Agent Agents = 1;
-}
-
-message RelayStartReq {
-  string AgentAlias = 1;
-  string TunAlias = 2;
-}
-
-message RelayStopReq {
-  string AgentAlias = 1;
-}
-
-message Operator {
+message Cert {
   string Name = 1;
+  string ExpiryDate = 2;
 }
 
-message NewRouteReq {
-  string TunAlias = 1;
-  string Cidr = 2;
+// [/Objects]
+
+// [Methods]
+
+message AddRedirectorReq {
+  string SessionID = 1;
+  string Protocol = 2;
+  string From = 3;
+  string To = 4;
+}
+
+message DelRedirectorReq {
+  string SessionID = 1;
+  string RedirectorID = 2;
+}
+
+message GetSessionsResp {
+  repeated Session Sessions = 1;
+}
+
+message RenameSessionReq {
+  string SessionID = 1;
+  string Alias = 2;
+}
+
+message StartRelayReq {
+  string SessionID = 1;
+}
+
+message StopRelayReq {
+  string SessionID = 1;
+}
+
+message KillSessionReq {
+  string SessionID = 1;
+}
+
+message AddRouteReq {
+  string SessionID = 1;
+  Route Route = 2;
   bool Force = 3;
 }
 
-message NewRouteResp {
-  Tun OverlappingTun = 1;
+message AddRouteResp {
+  Session OverlappingSession = 1;
 }
 
 message DelRouteReq {
-  string TunAlias = 1;
+  string SessionID = 1;
   string Cidr = 2;
-}
-
-message DelTunReq {
-  string TunAlias = 1;
-}
-
-message RenameTunReq {
-  string OldAlias = 1;
-  string NewAlias = 2;
 }
 
 message GenerateAgentReq {
@@ -153,20 +144,22 @@ message GenerateAgentResp {
   bytes AgentBinary = 1;
 }
 
-message RenameAgentReq {
-  string OldAlias = 1;
-  string NewAlias = 2;
-}
-
-message Cert {
-  string Name = 1;
-  string ExpiryDate = 2;
-}
-
-message ListCertsResp {
-  repeated Cert Certs = 1;
-}
-
-message RegenCertsReq {
+message RegenCertReq {
   string Name = 1;
 }
+
+message NewOperatorReq {
+  string Name = 1;
+  string Server = 2;
+  bool IsAdmin = 3;
+}
+
+message NewOperatorResp {
+  string Name = 1;
+  string Server = 2;
+  bytes Cert = 3;
+  bytes Key = 4;
+  bytes CA = 5;
+}
+
+// [/Methods]

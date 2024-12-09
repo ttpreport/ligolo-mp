@@ -1,6 +1,6 @@
-GO_VER = 1.21.4
+GO_VER = 1.22.2
 BLOAT_FILES = AUTHORS CONTRIBUTORS PATENTS VERSION favicon.ico robots.txt SECURITY.md CONTRIBUTING.md LICENSE README.md ./doc ./test ./api ./misc
-GARBLE_VER = 1.21.4b
+GARBLE_VER = 1.22.2
 
 .PHONY: all
 all: assets binaries

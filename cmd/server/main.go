@@ -6,14 +6,15 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/ttpreport/ligolo-mp/assets"
+	"github.com/ttpreport/ligolo-mp/cmd/server/agents"
 	"github.com/ttpreport/ligolo-mp/cmd/server/cli"
 	"github.com/ttpreport/ligolo-mp/cmd/server/rpc"
-	"github.com/ttpreport/ligolo-mp/internal/common/config"
-	"github.com/ttpreport/ligolo-mp/internal/core/agents"
-	"github.com/ttpreport/ligolo-mp/internal/core/certs"
-	"github.com/ttpreport/ligolo-mp/internal/core/proxy"
-	"github.com/ttpreport/ligolo-mp/internal/core/storage"
-	"github.com/ttpreport/ligolo-mp/internal/core/tuns"
+	"github.com/ttpreport/ligolo-mp/internal/certificate"
+	"github.com/ttpreport/ligolo-mp/internal/config"
+	"github.com/ttpreport/ligolo-mp/internal/operator"
+	"github.com/ttpreport/ligolo-mp/internal/session"
+	"github.com/ttpreport/ligolo-mp/internal/storage"
 )
 
 func main() {
@@ -27,6 +28,7 @@ func main() {
 	flag.Parse()
 
 	cfg := &config.Config{
+		Environment:          "server",
 		Verbose:              *verboseFlag,
 		ListenInterface:      *listenInterface,
 		MaxInFlight:          *maxInflight,
@@ -34,18 +36,10 @@ func main() {
 		OperatorAddr:         *operatorAddr,
 	}
 
-	storage, err := storage.New(config.GetRootAppDir("server"))
+	storage, err := storage.New(cfg.GetRootAppDir())
 
 	if err != nil {
 		panic(fmt.Sprintf("could not connect to storage: %v", err))
-	}
-
-	if err = storage.InitServer(); err != nil {
-		panic(fmt.Sprintf("could not init storage: %v", err))
-	}
-
-	if err = certs.Init(storage); err != nil {
-		panic(fmt.Sprintf("could not initialize certificates: %v", err))
 	}
 
 	if *verboseFlag {
@@ -59,18 +53,48 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
+	certRepo, _ := certificate.NewCertificateRepository(storage)
+	sessRepo, _ := session.NewSessionRepository(storage)
+	operRepo, _ := operator.NewOperatorRepository(storage)
+
+	certService := certificate.NewCertificateService(certRepo)
+	sessService := session.NewSessionService(cfg, sessRepo)
+	operService := operator.NewOperatorService(cfg, operRepo, certService)
+	assetsService := assets.NewAssetsService(cfg)
+
+	if err := certService.Init(); err != nil {
+		panic(err)
+	}
+
+	if err := operService.Init(); err != nil {
+		panic(err)
+	}
+
+	if err := sessService.CleanUp(); err != nil {
+		panic(err)
+	}
+
+	if err := assetsService.Init(); err != nil {
+		panic(err)
+	}
+
+	quit := make(chan error, 1)
+
 	if *daemonFlag {
-		tuns := tuns.New(storage)
-		agents := agents.New(storage)
-		proxyController := proxy.New(cfg, storage)
+		go func() {
+			quit <- agents.Run(cfg, certService, sessService)
+		}()
+		go func() {
+			quit <- rpc.Run(cfg, certService, sessService, operService, assetsService)
+		}()
 
-		go proxyController.ListenAndServe()
-		go agents.WaitForConnections(cfg, &proxyController, tuns)
+		slog.Info("server started")
 
-		tuns.Restore()
-
-		rpc.Run(cfg, storage, tuns, agents)
+		ret := <-quit
+		if ret != nil {
+			slog.Info("server terminated", slog.Any("exit", ret))
+		}
 	} else {
-		cli.Run(cfg, storage)
+		cli.Run(cfg, certService, operService)
 	}
 }

@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/docker/docker/pkg/namesgenerator"
-	"github.com/ttpreport/ligolo-mp/internal/common/config"
-	"github.com/ttpreport/ligolo-mp/internal/core/gogo"
+	"github.com/rs/xid"
+	"github.com/ttpreport/ligolo-mp/internal/config"
+	"github.com/ttpreport/ligolo-mp/internal/gogo"
 )
 
 var (
@@ -19,12 +19,32 @@ var (
 	FS embed.FS
 )
 
-func init() {
-	setupGo()
+type AssetsService struct {
+	config *config.Config
 }
 
-func renderAgent(socksServer string, socksUser string, socksPass string, server string, CACert string, AgentCert string, AgentKey string) (string, error) {
-	agentDir, err := setupAgentDir()
+func NewAssetsService(cfg *config.Config) *AssetsService {
+	return &AssetsService{
+		config: cfg,
+	}
+}
+
+func (assets *AssetsService) Init() error {
+	a, err := FS.ReadFile("artifacts/go.zip")
+	if err != nil {
+		return err
+	}
+
+	_, err = unzipBuf(a, assets.config.GetRootAppDir())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (assets *AssetsService) renderAgent(socksServer string, socksUser string, socksPass string, server string, CACert string, AgentCert string, AgentKey string) (string, error) {
+	agentDir, err := assets.setupAgentDir()
 	if err != nil {
 		return "", err
 	}
@@ -79,50 +99,32 @@ func renderAgent(socksServer string, socksUser string, socksPass string, server 
 	return agentDir, err
 }
 
-func setupAgentDir() (string, error) {
-	var agentDir string
-	for i := 0; i < 6; i++ {
-		name := namesgenerator.GetRandomName(i)
-		agentDir = filepath.Join(config.GetRootAppDir("server"), "agents", name)
+func (assets *AssetsService) setupAgentDir() (string, error) {
+	agentDir := filepath.Join(assets.config.GetRootAppDir(), "agents", xid.New().String())
 
-		if _, err := os.Stat(agentDir); os.IsNotExist(err) {
-			if err = os.MkdirAll(agentDir, 0700); err != nil {
-				return "", err
-			}
-
-			srcDir := filepath.Join(agentDir, "src")
-			if err = os.MkdirAll(srcDir, 0700); err != nil {
-				return "", err
-			}
-
-			binDir := filepath.Join(agentDir, "bin")
-			if err = os.MkdirAll(binDir, 0700); err != nil {
-				return "", err
-			}
-
-			return agentDir, nil
+	if _, err := os.Stat(agentDir); os.IsNotExist(err) {
+		if err = os.MkdirAll(agentDir, 0700); err != nil {
+			return "", err
 		}
+
+		srcDir := filepath.Join(agentDir, "src")
+		if err = os.MkdirAll(srcDir, 0700); err != nil {
+			return "", err
+		}
+
+		binDir := filepath.Join(agentDir, "bin")
+		if err = os.MkdirAll(binDir, 0700); err != nil {
+			return "", err
+		}
+
+		return agentDir, nil
 	}
 
 	return "", nil
 }
 
-func setupGo() error {
-	a, err := FS.ReadFile("artifacts/go.zip")
-	if err != nil {
-		return err
-	}
-
-	_, err = unzipBuf(a, config.GetRootAppDir("server"))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func CompileAgent(goos string, goarch string, obfuscate bool, socksServer string, socksUser string, socksPass string, server string, CACert string, AgentCert string, AgentKey string) ([]byte, error) {
-	agentDir, err := renderAgent(socksServer, socksUser, socksPass, server, CACert, AgentCert, AgentKey)
+func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate bool, socksServer string, socksUser string, socksPass string, server string, CACert string, AgentCert string, AgentKey string) ([]byte, error) {
+	agentDir, err := assets.renderAgent(socksServer, socksUser, socksPass, server, CACert, AgentCert, AgentKey)
 	if err != nil {
 		return nil, err
 	}
@@ -131,9 +133,9 @@ func CompileAgent(goos string, goarch string, obfuscate bool, socksServer string
 		CGO:        "0",
 		GOOS:       goos,
 		GOARCH:     goarch,
-		GOROOT:     gogo.GetGoRootDir(config.GetRootAppDir("server")),
-		GOCACHE:    gogo.GetGoCache(config.GetRootAppDir("server")),
-		GOMODCACHE: gogo.GetGoModCache(config.GetRootAppDir("server")),
+		GOROOT:     gogo.GetGoRootDir(assets.config.GetRootAppDir()),
+		GOCACHE:    gogo.GetGoCache(assets.config.GetRootAppDir()),
+		GOMODCACHE: gogo.GetGoModCache(assets.config.GetRootAppDir()),
 		ProjectDir: agentDir,
 		Obfuscate:  obfuscate,
 		GOGARBLE:   "*",
