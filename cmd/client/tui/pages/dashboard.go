@@ -45,11 +45,6 @@ type DashboardPage struct {
 	selectedSelection *pb.Session
 }
 
-func (dash *DashboardPage) Focus(delegate func(p tview.Primitive)) {
-	dash.setFocus = delegate
-	dash.Pages.Focus(delegate)
-}
-
 func NewDashboardPage() *DashboardPage {
 	dash := &DashboardPage{
 		Pages:       *tview.NewPages(),
@@ -294,7 +289,9 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 		if dash.flex.HasFocus() {
 			switch key {
 			case tcell.KeyCtrlA:
-				dash.adminFunc()
+				if dash.operator.IsAdmin {
+					dash.adminFunc()
+				}
 			case tcell.KeyTab:
 				focusOrder := []tview.Primitive{
 					dash.sessions,
@@ -315,26 +312,24 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 				dash.disconnectFunc()
 				dash.TruncateLog()
 			case tcell.KeyCtrlN:
-				if dash.generateFunc != nil {
-					gen := forms.NewGenerateForm()
-					gen.SetSubmitFunc(func(req *pb.GenerateAgentReq, path string) {
-						dash.DoWithLoader("Generating agent...", func() {
-							fullPath, err := dash.generateFunc(path, req)
-							if err != nil {
-								dash.ShowError(fmt.Sprintf("Could not generate agent: %s", err), nil)
-								return
-							}
+				gen := forms.NewGenerateForm()
+				gen.SetSubmitFunc(func(req *pb.GenerateAgentReq, path string) {
+					dash.DoWithLoader("Generating agent...", func() {
+						fullPath, err := dash.generateFunc(path, req)
+						if err != nil {
+							dash.ShowError(fmt.Sprintf("Could not generate agent: %s", err), nil)
+							return
+						}
 
-							dash.RemovePage(gen.GetID())
-							dash.ShowInfo(fmt.Sprintf("Agent binary saved to %s", fullPath), nil)
-							dash.AppendLog(events.OK, fmt.Sprintf("Agent binary saved to %s", fullPath))
-						})
-					})
-					gen.SetCancelFunc(func() {
 						dash.RemovePage(gen.GetID())
+						dash.ShowInfo(fmt.Sprintf("Agent binary saved to %s", fullPath), nil)
+						dash.AppendLog(events.OK, fmt.Sprintf("Agent binary saved to %s", fullPath))
 					})
-					dash.AddPage(gen.GetID(), gen, true, true)
-				}
+				})
+				gen.SetCancelFunc(func() {
+					dash.RemovePage(gen.GetID())
+				})
+				dash.AddPage(gen.GetID(), gen, true, true)
 			default:
 				defaultHandler := dash.flex.InputHandler()
 				defaultHandler(event, setFocus)
@@ -344,6 +339,11 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 			defaultHandler(event, setFocus)
 		}
 	}
+}
+
+func (dash *DashboardPage) Focus(delegate func(p tview.Primitive)) {
+	dash.setFocus = delegate
+	dash.Pages.Focus(delegate)
 }
 
 func (dash *DashboardPage) GetID() string {

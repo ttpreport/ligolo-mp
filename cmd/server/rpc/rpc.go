@@ -238,29 +238,186 @@ func (s *ligoloServer) GenerateAgent(ctx context.Context, in *pb.GenerateAgentRe
 	return &pb.GenerateAgentResp{AgentBinary: result}, nil
 }
 
-func (s *ligoloServer) NewOperator(ctx context.Context, in *pb.NewOperatorReq) (*pb.NewOperatorResp, error) {
+func (s *ligoloServer) GetOperators(ctx context.Context, in *pb.Empty) (*pb.GetOperatorsResp, error) {
+	slog.Debug("Received request to list operators", slog.Any("in", in))
+	oper := ctx.Value("operator").(*operator.Operator)
+	if !oper.IsAdmin {
+		return nil, errors.New("access denied")
+	}
+
+	opers, err := s.operService.AllOperators()
+	if err != nil {
+		return nil, err
+	}
+
+	var pbOpers []*pb.Operator
+	for _, oper := range opers {
+		pbOper := oper.Proto()
+
+		if _, ok := s.connections[oper.Name]; ok {
+			pbOper.IsOnline = true
+		}
+
+		pbOpers = append(pbOpers, pbOper)
+	}
+
+	return &pb.GetOperatorsResp{Operators: pbOpers}, nil
+}
+
+func (s *ligoloServer) ExportOperator(ctx context.Context, in *pb.ExportOperatorReq) (*pb.ExportOperatorResp, error) {
+	slog.Debug("Received request to delete operator", slog.Any("in", in))
+	oper := ctx.Value("operator").(*operator.Operator)
+	if !oper.IsAdmin {
+		return nil, errors.New("access denied")
+	}
+
+	oper, err := s.operService.OperatorByName(in.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := oper.ToBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ExportOperatorResp{
+		Operator: oper.Proto(),
+		Config:   config,
+	}, nil
+}
+
+func (s *ligoloServer) AddOperator(ctx context.Context, in *pb.AddOperatorReq) (*pb.AddOperatorResp, error) {
 	slog.Debug("Received request to create operator", slog.Any("in", in))
 	oper := ctx.Value("operator").(*operator.Operator)
 	if !oper.IsAdmin {
 		return nil, errors.New("access denied")
 	}
 
-	if _, _, err := net.SplitHostPort(in.Server); err != nil {
+	if _, _, err := net.SplitHostPort(in.Operator.Server); err != nil {
 		return nil, fmt.Errorf("server is malformed: %s", err)
 	}
 
-	newOperator, err := s.operService.NewOperator(in.Name, in.IsAdmin, in.Server)
+	newOperator, err := s.operService.NewOperator(in.Operator.Name, in.Operator.IsAdmin, in.Operator.Server)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.NewOperatorResp{
-		Name:   newOperator.Name,
-		Server: newOperator.Server,
-		Cert:   newOperator.Cert.Certificate,
-		Key:    newOperator.Cert.Key,
-		CA:     newOperator.CA,
+	return &pb.AddOperatorResp{
+		Operator: newOperator.Proto(),
+		Credentials: &pb.OperatorCredentials{
+			Cert: newOperator.Cert.Proto(),
+			CA:   newOperator.CA,
+		},
 	}, nil
+}
+
+func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (*pb.Empty, error) { // TODO fully revoke user's certificate
+	slog.Debug("Received request to delete operator", slog.Any("in", in))
+	oper := ctx.Value("operator").(*operator.Operator)
+	if !oper.IsAdmin {
+		return nil, errors.New("access denied")
+	}
+
+	opers, err := s.operService.AllOperators()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(opers) <= 1 {
+		return nil, errors.New("this is the last operator")
+	}
+
+	targetOper, err := s.operService.OperatorByName(in.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	if targetOper.IsAdmin {
+		counter := 0
+		for _, oper := range opers {
+			if oper.IsAdmin {
+				counter++
+			}
+		}
+
+		if counter <= 1 {
+			return nil, errors.New("this is the last admin remaining")
+		}
+	}
+
+	_, err = s.operService.RemoveOperator(in.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}
+
+func (s *ligoloServer) PromoteOperator(ctx context.Context, in *pb.PromoteOperatorReq) (*pb.Empty, error) {
+	slog.Debug("Received request to promote operator", slog.Any("in", in))
+	oper := ctx.Value("operator").(*operator.Operator)
+	if !oper.IsAdmin {
+		return nil, errors.New("access denied")
+	}
+
+	_, err := s.operService.PromoteOperator(in.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}
+
+func (s *ligoloServer) DemoteOperator(ctx context.Context, in *pb.DemoteOperatorReq) (*pb.Empty, error) {
+	slog.Debug("Received request to demote operator", slog.Any("in", in))
+	oper := ctx.Value("operator").(*operator.Operator)
+	if !oper.IsAdmin {
+		return nil, errors.New("access denied")
+	}
+
+	opers, err := s.operService.AllOperators()
+	if err != nil {
+		return nil, err
+	}
+
+	counter := 0
+	for _, oper := range opers {
+		if oper.IsAdmin {
+			counter++
+		}
+	}
+
+	if counter <= 1 {
+		return nil, errors.New("this is the last admin remaining")
+	}
+
+	_, err = s.operService.DemoteOperator(in.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}
+
+func (s *ligoloServer) GetCerts(ctx context.Context, in *pb.Empty) (*pb.GetCertsResp, error) {
+	slog.Debug("Received request to list certs", slog.Any("in", in))
+	oper := ctx.Value("operator").(*operator.Operator)
+	if !oper.IsAdmin {
+		return nil, errors.New("access denied")
+	}
+
+	certs, err := s.certService.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var pbCerts []*pb.Cert
+	for _, cert := range certs {
+		pbCerts = append(pbCerts, cert.Proto())
+	}
+
+	return &pb.GetCertsResp{Certs: pbCerts}, nil
 }
 
 func (s *ligoloServer) RegenCert(ctx context.Context, in *pb.RegenCertReq) (*pb.Empty, error) {

@@ -108,15 +108,45 @@ func (service *OperatorService) NewOperatorFromFile(path string) (*Operator, err
 	return oper, nil
 }
 
-func (service *OperatorService) RemoveOperator(id string) (*Operator, error) {
-	oper, err := service.repo.GetOne(id)
+func (service *OperatorService) RemoveOperator(name string) (*Operator, error) {
+	oper, err := service.repo.GetOne(name)
 	if err != nil {
 		return nil, err
 	}
 
 	if oper == nil {
-		return nil, fmt.Errorf("operator '%s' not found", id)
+		return nil, fmt.Errorf("operator '%s' not found", name)
 	}
 
 	return oper, service.repo.Remove(oper)
+}
+
+func (service *OperatorService) PromoteOperator(name string) (*Operator, error) {
+	oper, err := service.repo.GetOne(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if oper == nil {
+		return nil, fmt.Errorf("operator '%s' not found", name)
+	}
+
+	oper.IsAdmin = true
+
+	return oper, service.repo.Save(oper)
+}
+
+func (service *OperatorService) DemoteOperator(name string) (*Operator, error) {
+	oper, err := service.repo.GetOne(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if oper == nil {
+		return nil, fmt.Errorf("operator '%s' not found", name)
+	}
+
+	oper.IsAdmin = false
+
+	return oper, service.repo.Save(oper)
 }

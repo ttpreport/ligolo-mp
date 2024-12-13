@@ -20,6 +20,7 @@ import (
 type Operator struct {
 	Name       string
 	IsAdmin    bool
+	IsOnline   bool `json:"-"`
 	Server     string
 	CA         []byte
 	Cert       *certificate.Certificate
@@ -43,6 +44,15 @@ func (oper *Operator) ToFile(path string) (string, error) {
 	}
 
 	return fullPath, nil
+}
+
+func (oper *Operator) ToBytes() ([]byte, error) {
+	operBytes, err := json.Marshal(oper)
+	if err != nil {
+		return nil, err
+	}
+
+	return operBytes, nil
 }
 
 func (oper *Operator) Connect() error {
@@ -122,4 +132,13 @@ func (oper *Operator) IsConnected() bool {
 
 func (oper *Operator) Client() pb.LigoloClient {
 	return oper.client
+}
+
+func (oper *Operator) Proto() *pb.Operator {
+	return &pb.Operator{
+		Name:     oper.Name,
+		IsAdmin:  oper.IsAdmin,
+		IsOnline: oper.IsOnline,
+		Server:   oper.Server,
+	}
 }

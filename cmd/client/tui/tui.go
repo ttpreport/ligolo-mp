@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -83,6 +84,7 @@ func (app *App) initCredentials() {
 		}
 
 		app.dashboard.SetOperator(oper)
+		app.admin.SetOperator(oper)
 		app.SwitchToPage(app.dashboard)
 		return nil
 	})
@@ -235,8 +237,102 @@ func (app *App) initDashboard() {
 }
 
 func (app *App) initAdmin() {
-	app.admin.SetOperatorFunc(func() {
+	app.admin.SetSwitchbackFunc(func() {
 		app.SwitchToPage(app.dashboard)
+	})
+
+	app.admin.SetOperatorsFunc(func() ([]*pb.Operator, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		defer cancel()
+
+		r, err := app.operator.Client().GetOperators(ctx, &pb.Empty{})
+		if err != nil {
+			return nil, err
+		}
+
+		return r.Operators, nil
+	})
+
+	app.admin.SetCertificatesFunc(func() ([]*pb.Cert, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		defer cancel()
+
+		r, err := app.operator.Client().GetCerts(ctx, &pb.Empty{})
+		if err != nil {
+			return nil, err
+		}
+
+		return r.Certs, nil
+	})
+
+	app.admin.SetExportOperatorFunc(func(name string, path string) (string, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		defer cancel()
+
+		r, err := app.operator.Client().ExportOperator(ctx, &pb.ExportOperatorReq{
+			Name: name,
+		})
+		if err != nil {
+			return "", err
+		}
+
+		fullPath := filepath.Join(path, fmt.Sprintf("%s_%s_ligolo-mp.json", r.Operator.Name, r.Operator.Server))
+		if err = os.WriteFile(fullPath, r.Config, os.ModePerm); err != nil {
+			return "", err
+		}
+
+		return fullPath, nil
+	})
+
+	app.admin.SetAddOperatorFunc(func(name string, isAdmin bool, server string) (*pb.Operator, *pb.OperatorCredentials, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		defer cancel()
+
+		r, err := app.operator.Client().AddOperator(ctx, &pb.AddOperatorReq{
+			Operator: &pb.Operator{
+				Name:    name,
+				IsAdmin: isAdmin,
+				Server:  server,
+			},
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return r.Operator, r.Credentials, nil
+	})
+
+	app.admin.SetDelOperatorFunc(func(name string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		defer cancel()
+
+		_, err := app.operator.Client().DelOperator(ctx, &pb.DelOperatorReq{
+			Name: name,
+		})
+
+		return err
+	})
+
+	app.admin.SetPromoteOperatorFunc(func(name string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		defer cancel()
+
+		_, err := app.operator.Client().PromoteOperator(ctx, &pb.PromoteOperatorReq{
+			Name: name,
+		})
+
+		return err
+	})
+
+	app.admin.SetDemoteOperatorFunc(func(name string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		defer cancel()
+
+		_, err := app.operator.Client().DemoteOperator(ctx, &pb.DemoteOperatorReq{
+			Name: name,
+		})
+
+		return err
 	})
 
 	app.pages.AddPage(app.credentials.GetID(), app.credentials, true, false)
@@ -305,6 +401,7 @@ func (app *App) HandleOperatorEvents() {
 			}
 
 			app.dashboard.RefreshData()
+			app.admin.RefreshData()
 
 			app.log(events.EventType(event.Type), event.Data)
 		}

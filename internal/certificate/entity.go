@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+
+	pb "github.com/ttpreport/ligolo-mp/protobuf"
 )
 
 type Certificate struct {
@@ -25,4 +27,18 @@ func (cert *Certificate) CertPool() (*x509.CertPool, error) {
 	}
 
 	return certpool, nil
+}
+
+func (cert *Certificate) Proto() *pb.Cert {
+	keypair, err := cert.KeyPair()
+	if err != nil {
+		return nil
+	}
+
+	return &pb.Cert{
+		Name:        cert.Name,
+		ExpiryDate:  keypair.Leaf.NotAfter.String(),
+		Certificate: cert.Certificate,
+		Key:         cert.Key,
+	}
 }

@@ -124,3 +124,4 @@ When using *nmap*, you should use `--unprivileged` or `-PE` to avoid false posit
 - Client-server protocol: switch to something portable to make it possible to generate non-golang agents
 - Install script: installs service
 - Persistent TUNs (?)
+- Unique certificate per generated agent binary for granular revocation

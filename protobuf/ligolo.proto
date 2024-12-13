@@ -20,8 +20,15 @@ service Ligolo {
   rpc AddRedirector (AddRedirectorReq) returns (Empty) {}
   rpc DelRedirector (DelRedirectorReq) returns (Empty) {}
   
+  rpc GetCerts (Empty) returns (GetCertsResp) {}
   rpc RegenCert (RegenCertReq) returns (Empty) {}
-  rpc NewOperator (NewOperatorReq) returns (NewOperatorResp) {}
+
+  rpc GetOperators (Empty) returns (GetOperatorsResp) {}
+  rpc ExportOperator (ExportOperatorReq) returns (ExportOperatorResp) {}
+  rpc AddOperator (AddOperatorReq) returns (AddOperatorResp) {}
+  rpc DelOperator (DelOperatorReq) returns (Empty) {}
+  rpc PromoteOperator (PromoteOperatorReq) returns (Empty) {}
+  rpc DemoteOperator (DemoteOperatorReq) returns (Empty) {}
 
   rpc GenerateAgent (GenerateAgentReq) returns (GenerateAgentResp) {}
 }
@@ -76,6 +83,20 @@ message Redirector {
 message Cert {
   string Name = 1;
   string ExpiryDate = 2;
+  bytes Certificate = 3;
+  bytes Key = 4;
+}
+
+message Operator {
+  string Name = 1;
+  bool IsAdmin = 2;
+  string Server = 3;
+  bool IsOnline = 4;
+}
+
+message OperatorCredentials {
+  Cert Cert = 1;
+  bytes CA = 2;
 }
 
 // [/Objects]
@@ -144,22 +165,46 @@ message GenerateAgentResp {
   bytes AgentBinary = 1;
 }
 
+message GetCertsResp {
+  repeated Cert Certs = 1;
+}
+
 message RegenCertReq {
   string Name = 1;
 }
 
-message NewOperatorReq {
-  string Name = 1;
-  string Server = 2;
-  bool IsAdmin = 3;
+message GetOperatorsResp {
+  repeated Operator Operators = 1;
 }
 
-message NewOperatorResp {
+message ExportOperatorReq {
   string Name = 1;
-  string Server = 2;
-  bytes Cert = 3;
-  bytes Key = 4;
-  bytes CA = 5;
+}
+
+message ExportOperatorResp {
+  Operator Operator = 1;
+  bytes Config = 2;
+}
+
+message AddOperatorReq {
+  Operator Operator = 1;
+}
+
+message AddOperatorResp {
+  Operator Operator = 1;
+  OperatorCredentials Credentials = 2;
+}
+
+message DelOperatorReq {
+  string Name = 1;
+}
+
+message PromoteOperatorReq {
+  string Name = 1;
+}
+
+message DemoteOperatorReq {
+  string Name = 1;
 }
 
 // [/Methods]

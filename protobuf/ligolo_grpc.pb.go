@@ -32,8 +32,14 @@ type LigoloClient interface {
 	DelRoute(ctx context.Context, in *DelRouteReq, opts ...grpc.CallOption) (*Empty, error)
 	AddRedirector(ctx context.Context, in *AddRedirectorReq, opts ...grpc.CallOption) (*Empty, error)
 	DelRedirector(ctx context.Context, in *DelRedirectorReq, opts ...grpc.CallOption) (*Empty, error)
+	GetCerts(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetCertsResp, error)
 	RegenCert(ctx context.Context, in *RegenCertReq, opts ...grpc.CallOption) (*Empty, error)
-	NewOperator(ctx context.Context, in *NewOperatorReq, opts ...grpc.CallOption) (*NewOperatorResp, error)
+	GetOperators(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetOperatorsResp, error)
+	ExportOperator(ctx context.Context, in *ExportOperatorReq, opts ...grpc.CallOption) (*ExportOperatorResp, error)
+	AddOperator(ctx context.Context, in *AddOperatorReq, opts ...grpc.CallOption) (*AddOperatorResp, error)
+	DelOperator(ctx context.Context, in *DelOperatorReq, opts ...grpc.CallOption) (*Empty, error)
+	PromoteOperator(ctx context.Context, in *PromoteOperatorReq, opts ...grpc.CallOption) (*Empty, error)
+	DemoteOperator(ctx context.Context, in *DemoteOperatorReq, opts ...grpc.CallOption) (*Empty, error)
 	GenerateAgent(ctx context.Context, in *GenerateAgentReq, opts ...grpc.CallOption) (*GenerateAgentResp, error)
 }
 
@@ -158,6 +164,15 @@ func (c *ligoloClient) DelRedirector(ctx context.Context, in *DelRedirectorReq, 
 	return out, nil
 }
 
+func (c *ligoloClient) GetCerts(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetCertsResp, error) {
+	out := new(GetCertsResp)
+	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/GetCerts", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *ligoloClient) RegenCert(ctx context.Context, in *RegenCertReq, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/RegenCert", in, out, opts...)
@@ -167,9 +182,54 @@ func (c *ligoloClient) RegenCert(ctx context.Context, in *RegenCertReq, opts ...
 	return out, nil
 }
 
-func (c *ligoloClient) NewOperator(ctx context.Context, in *NewOperatorReq, opts ...grpc.CallOption) (*NewOperatorResp, error) {
-	out := new(NewOperatorResp)
-	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/NewOperator", in, out, opts...)
+func (c *ligoloClient) GetOperators(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetOperatorsResp, error) {
+	out := new(GetOperatorsResp)
+	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/GetOperators", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ligoloClient) ExportOperator(ctx context.Context, in *ExportOperatorReq, opts ...grpc.CallOption) (*ExportOperatorResp, error) {
+	out := new(ExportOperatorResp)
+	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/ExportOperator", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ligoloClient) AddOperator(ctx context.Context, in *AddOperatorReq, opts ...grpc.CallOption) (*AddOperatorResp, error) {
+	out := new(AddOperatorResp)
+	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/AddOperator", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ligoloClient) DelOperator(ctx context.Context, in *DelOperatorReq, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/DelOperator", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ligoloClient) PromoteOperator(ctx context.Context, in *PromoteOperatorReq, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/PromoteOperator", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ligoloClient) DemoteOperator(ctx context.Context, in *DemoteOperatorReq, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/DemoteOperator", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -199,8 +259,14 @@ type LigoloServer interface {
 	DelRoute(context.Context, *DelRouteReq) (*Empty, error)
 	AddRedirector(context.Context, *AddRedirectorReq) (*Empty, error)
 	DelRedirector(context.Context, *DelRedirectorReq) (*Empty, error)
+	GetCerts(context.Context, *Empty) (*GetCertsResp, error)
 	RegenCert(context.Context, *RegenCertReq) (*Empty, error)
-	NewOperator(context.Context, *NewOperatorReq) (*NewOperatorResp, error)
+	GetOperators(context.Context, *Empty) (*GetOperatorsResp, error)
+	ExportOperator(context.Context, *ExportOperatorReq) (*ExportOperatorResp, error)
+	AddOperator(context.Context, *AddOperatorReq) (*AddOperatorResp, error)
+	DelOperator(context.Context, *DelOperatorReq) (*Empty, error)
+	PromoteOperator(context.Context, *PromoteOperatorReq) (*Empty, error)
+	DemoteOperator(context.Context, *DemoteOperatorReq) (*Empty, error)
 	GenerateAgent(context.Context, *GenerateAgentReq) (*GenerateAgentResp, error)
 	mustEmbedUnimplementedLigoloServer()
 }
@@ -239,11 +305,29 @@ func (UnimplementedLigoloServer) AddRedirector(context.Context, *AddRedirectorRe
 func (UnimplementedLigoloServer) DelRedirector(context.Context, *DelRedirectorReq) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DelRedirector not implemented")
 }
+func (UnimplementedLigoloServer) GetCerts(context.Context, *Empty) (*GetCertsResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCerts not implemented")
+}
 func (UnimplementedLigoloServer) RegenCert(context.Context, *RegenCertReq) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegenCert not implemented")
 }
-func (UnimplementedLigoloServer) NewOperator(context.Context, *NewOperatorReq) (*NewOperatorResp, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NewOperator not implemented")
+func (UnimplementedLigoloServer) GetOperators(context.Context, *Empty) (*GetOperatorsResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetOperators not implemented")
+}
+func (UnimplementedLigoloServer) ExportOperator(context.Context, *ExportOperatorReq) (*ExportOperatorResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExportOperator not implemented")
+}
+func (UnimplementedLigoloServer) AddOperator(context.Context, *AddOperatorReq) (*AddOperatorResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddOperator not implemented")
+}
+func (UnimplementedLigoloServer) DelOperator(context.Context, *DelOperatorReq) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DelOperator not implemented")
+}
+func (UnimplementedLigoloServer) PromoteOperator(context.Context, *PromoteOperatorReq) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PromoteOperator not implemented")
+}
+func (UnimplementedLigoloServer) DemoteOperator(context.Context, *DemoteOperatorReq) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DemoteOperator not implemented")
 }
 func (UnimplementedLigoloServer) GenerateAgent(context.Context, *GenerateAgentReq) (*GenerateAgentResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateAgent not implemented")
@@ -444,6 +528,24 @@ func _Ligolo_DelRedirector_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Ligolo_GetCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LigoloServer).GetCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ligolo.Ligolo/GetCerts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LigoloServer).GetCerts(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Ligolo_RegenCert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegenCertReq)
 	if err := dec(in); err != nil {
@@ -462,20 +564,110 @@ func _Ligolo_RegenCert_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Ligolo_NewOperator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NewOperatorReq)
+func _Ligolo_GetOperators_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LigoloServer).NewOperator(ctx, in)
+		return srv.(LigoloServer).GetOperators(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ligolo.Ligolo/NewOperator",
+		FullMethod: "/ligolo.Ligolo/GetOperators",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LigoloServer).NewOperator(ctx, req.(*NewOperatorReq))
+		return srv.(LigoloServer).GetOperators(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Ligolo_ExportOperator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExportOperatorReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LigoloServer).ExportOperator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ligolo.Ligolo/ExportOperator",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LigoloServer).ExportOperator(ctx, req.(*ExportOperatorReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Ligolo_AddOperator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddOperatorReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LigoloServer).AddOperator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ligolo.Ligolo/AddOperator",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LigoloServer).AddOperator(ctx, req.(*AddOperatorReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Ligolo_DelOperator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DelOperatorReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LigoloServer).DelOperator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ligolo.Ligolo/DelOperator",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LigoloServer).DelOperator(ctx, req.(*DelOperatorReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Ligolo_PromoteOperator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PromoteOperatorReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LigoloServer).PromoteOperator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ligolo.Ligolo/PromoteOperator",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LigoloServer).PromoteOperator(ctx, req.(*PromoteOperatorReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Ligolo_DemoteOperator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DemoteOperatorReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LigoloServer).DemoteOperator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ligolo.Ligolo/DemoteOperator",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LigoloServer).DemoteOperator(ctx, req.(*DemoteOperatorReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -542,12 +734,36 @@ var Ligolo_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Ligolo_DelRedirector_Handler,
 		},
 		{
+			MethodName: "GetCerts",
+			Handler:    _Ligolo_GetCerts_Handler,
+		},
+		{
 			MethodName: "RegenCert",
 			Handler:    _Ligolo_RegenCert_Handler,
 		},
 		{
-			MethodName: "NewOperator",
-			Handler:    _Ligolo_NewOperator_Handler,
+			MethodName: "GetOperators",
+			Handler:    _Ligolo_GetOperators_Handler,
+		},
+		{
+			MethodName: "ExportOperator",
+			Handler:    _Ligolo_ExportOperator_Handler,
+		},
+		{
+			MethodName: "AddOperator",
+			Handler:    _Ligolo_AddOperator_Handler,
+		},
+		{
+			MethodName: "DelOperator",
+			Handler:    _Ligolo_DelOperator_Handler,
+		},
+		{
+			MethodName: "PromoteOperator",
+			Handler:    _Ligolo_PromoteOperator_Handler,
+		},
+		{
+			MethodName: "DemoteOperator",
+			Handler:    _Ligolo_DemoteOperator_Handler,
 		},
 		{
 			MethodName: "GenerateAgent",
