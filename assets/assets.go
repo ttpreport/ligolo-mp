@@ -4,9 +4,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"embed"
+	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/rs/xid"
@@ -43,7 +46,7 @@ func (assets *AssetsService) Init() error {
 	return nil
 }
 
-func (assets *AssetsService) renderAgent(socksServer string, socksUser string, socksPass string, server string, CACert string, AgentCert string, AgentKey string) (string, error) {
+func (assets *AssetsService) renderAgent(socksServer string, socksUser string, socksPass string, servers string, CACert string, AgentCert string, AgentKey string) (string, error) {
 	agentDir, err := assets.setupAgentDir()
 	if err != nil {
 		return "", err
@@ -71,7 +74,7 @@ func (assets *AssetsService) renderAgent(socksServer string, socksUser string, s
 		SocksServer string
 		SocksUser   string
 		SocksPass   string
-		Server      string
+		Servers     string
 		Retry       bool
 		CACert      string
 		AgentCert   string
@@ -80,7 +83,7 @@ func (assets *AssetsService) renderAgent(socksServer string, socksUser string, s
 		SocksServer: socksServer,
 		SocksUser:   socksUser,
 		SocksPass:   socksPass,
-		Server:      server,
+		Servers:     servers,
 		CACert:      CACert,
 		AgentCert:   AgentCert,
 		AgentKey:    AgentKey,
@@ -123,8 +126,14 @@ func (assets *AssetsService) setupAgentDir() (string, error) {
 	return "", nil
 }
 
-func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate bool, socksServer string, socksUser string, socksPass string, server string, CACert string, AgentCert string, AgentKey string) ([]byte, error) {
-	agentDir, err := assets.renderAgent(socksServer, socksUser, socksPass, server, CACert, AgentCert, AgentKey)
+func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate bool, socksServer string, socksUser string, socksPass string, servers string, CACert string, AgentCert string, AgentKey string) ([]byte, error) {
+	for _, server := range strings.Split(servers, "\n") {
+		if _, _, err := net.SplitHostPort(server); err != nil {
+			return nil, fmt.Errorf("%s is invalid server", err)
+		}
+	}
+
+	agentDir, err := assets.renderAgent(socksServer, socksUser, socksPass, servers, CACert, AgentCert, AgentKey)
 	if err != nil {
 		return nil, err
 	}

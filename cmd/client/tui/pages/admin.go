@@ -24,12 +24,14 @@ type AdminPage struct {
 	getOperators    func() ([]*pb.Operator, error)
 	getCertificates func() ([]*pb.Cert, error)
 	switchback      func()
+	disconnect      func()
 
 	exportOperator  func(string, string) (string, error)
 	addOperator     func(string, bool, string) (*pb.Operator, *pb.OperatorCredentials, error)
 	delOperator     func(string) error
 	promoteOperator func(string) error
 	demoteOperator  func(string) error
+	regenCert       func(string) error
 
 	operator *operator.Operator
 }
@@ -73,7 +75,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 		menu.AddItem(modals.NewMenuModalElem("Export", func() {
 			export := forms.NewExportForm()
 			export.SetSubmitFunc(func(path string) {
-				admin.DoWithLoader("Promoting operator...", func() {
+				admin.DoWithLoader("Exporting operator...", func() {
 					fullPath, err := admin.exportOperator(elem.Operator.Name, path)
 					if err != nil {
 						admin.ShowError(fmt.Sprintf("Could not export operator: %s", err), nil)
@@ -81,7 +83,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 					}
 
 					admin.RemovePage(export.GetID())
-					admin.ShowInfo(fmt.Sprintf("Exported operator to %s", fullPath), nil)
+					admin.ShowInfo(fmt.Sprintf("Exported operator to %s", fullPath), cleanup)
 					admin.RefreshData()
 				})
 			})
@@ -96,7 +98,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 				admin.DoWithLoader("Promoting operator...", func() {
 					err := admin.promoteOperator(elem.Operator.Name)
 					if err != nil {
-						admin.ShowError(fmt.Sprintf("Could not promote operator: %s", err), cleanup)
+						admin.ShowError(fmt.Sprintf("Could not promote operator: %s", err), nil)
 						return
 					}
 
@@ -108,7 +110,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 				admin.DoWithLoader("Demoting operator...", func() {
 					err := admin.demoteOperator(elem.Operator.Name)
 					if err != nil {
-						admin.ShowError(fmt.Sprintf("Could not demote operator: %s", err), cleanup)
+						admin.ShowError(fmt.Sprintf("Could not demote operator: %s", err), nil)
 						return
 					}
 
@@ -121,7 +123,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 			admin.DoWithLoader("Removing operator...", func() {
 				err := admin.delOperator(elem.Operator.Name)
 				if err != nil {
-					admin.ShowError(fmt.Sprintf("Could not remove operator: %s", err), cleanup)
+					admin.ShowError(fmt.Sprintf("Could not remove operator: %s", err), nil)
 					return
 				}
 
@@ -136,7 +138,34 @@ func (admin *AdminPage) initOperatorsWidget() {
 }
 
 func (admin *AdminPage) initCertsWidget() {
+	admin.certs.SetSelectedFunc(func(elem *widgets.CertificatesWidgetElem) {
+		menu := modals.NewMenuModal("Certificate")
+		cleanup := func() {
+			admin.RemovePage(menu.GetID())
+			admin.setFocus(admin.certs)
+			admin.RefreshData()
+		}
 
+		menu.AddItem(modals.NewMenuModalElem("Regenerate", func() {
+			name := elem.Certificate.Name
+			admin.DoWithConfirm(fmt.Sprintf("Regenerate certificate %s?", name), func() {
+				admin.DoWithLoader("Regenerating certificate...", func() {
+					err := admin.regenCert(name)
+					if err != nil {
+						admin.ShowError(fmt.Sprintf("Could not regenerate certificate: %s", err), nil)
+						return
+					}
+
+					admin.ShowInfo("Certificate regenerated", cleanup)
+					admin.RefreshData()
+				})
+			})
+		}))
+
+		menu.SetCancelFunc(cleanup)
+
+		admin.AddPage(menu.GetID(), menu, true, true)
+	})
 }
 
 func (admin *AdminPage) GetID() string {
@@ -147,6 +176,7 @@ func (admin *AdminPage) GetNavBar() []widgets.NavBarElem {
 	return []widgets.NavBarElem{
 		widgets.NewNavBarElem(tcell.KeyCtrlA, "Back"),
 		widgets.NewNavBarElem(tcell.KeyCtrlN, "New operator"),
+		widgets.NewNavBarElem(tcell.KeyCtrlD, "Disconnect"),
 	}
 }
 
@@ -171,6 +201,8 @@ func (admin *AdminPage) InputHandler() func(event *tcell.EventKey, setFocus func
 				}
 			case tcell.KeyCtrlA:
 				admin.switchback()
+			case tcell.KeyCtrlD:
+				admin.disconnect()
 			case tcell.KeyCtrlN:
 				gen := forms.NewOperatorForm()
 				gen.SetSubmitFunc(func(name string, isAdmin bool, server string) {
@@ -250,6 +282,10 @@ func (admin *AdminPage) SetDemoteOperatorFunc(f func(string) error) {
 	admin.demoteOperator = f
 }
 
+func (admin *AdminPage) SetRegenCertFunc(f func(string) error) {
+	admin.regenCert = f
+}
+
 func (admin *AdminPage) SetSwitchbackFunc(f func()) {
 	admin.switchback = f
 }
@@ -260,6 +296,10 @@ func (admin *AdminPage) SetOperatorsFunc(f func() ([]*pb.Operator, error)) {
 
 func (admin *AdminPage) SetCertificatesFunc(f func() ([]*pb.Cert, error)) {
 	admin.getCertificates = f
+}
+
+func (dash *AdminPage) SetDisconnectFunc(f func()) {
+	dash.disconnect = f
 }
 
 func (admin *AdminPage) ShowError(text string, done func()) {

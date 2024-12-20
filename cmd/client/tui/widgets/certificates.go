@@ -11,7 +11,7 @@ import (
 
 type CertificatesWidget struct {
 	*tview.Table
-	data []*pb.Cert
+	data []*CertificatesWidgetElem
 }
 
 func NewCertificatesWidget() *CertificatesWidget {
@@ -40,7 +40,10 @@ func NewCertificatesWidget() *CertificatesWidget {
 func (widget *CertificatesWidget) SetData(data []*pb.Cert) {
 	widget.Clear()
 
-	widget.data = data
+	widget.data = nil
+	for _, cert := range data {
+		widget.data = append(widget.data, NewCertsWidgetElem(cert))
+	}
 
 	widget.Refresh()
 	widget.ResetSelector()
@@ -61,9 +64,45 @@ func (widget *CertificatesWidget) Refresh() {
 
 	rowId := 1
 	for _, elem := range widget.data {
-		widget.SetCell(rowId, 0, tview.NewTableCell(elem.Name))
-		widget.SetCell(rowId, 1, tview.NewTableCell(elem.ExpiryDate))
+		widget.SetCell(rowId, 0, elem.Name())
+		widget.SetCell(rowId, 1, elem.ExpiryDate())
 
 		rowId++
 	}
+}
+
+func (widget *CertificatesWidget) FetchElem(row int) *CertificatesWidgetElem {
+	id := max(0, row-1)
+	if len(widget.data) > id {
+		return widget.data[id]
+	}
+
+	return nil
+}
+
+func (widget *CertificatesWidget) SetSelectedFunc(f func(*CertificatesWidgetElem)) {
+	widget.Table.SetSelectedFunc(func(row, _ int) {
+		item := widget.FetchElem(row)
+		if item != nil {
+			f(item)
+		}
+	})
+}
+
+type CertificatesWidgetElem struct {
+	Certificate *pb.Cert
+}
+
+func NewCertsWidgetElem(cert *pb.Cert) *CertificatesWidgetElem {
+	return &CertificatesWidgetElem{
+		Certificate: cert,
+	}
+}
+
+func (elem *CertificatesWidgetElem) Name() *tview.TableCell {
+	return tview.NewTableCell(elem.Certificate.Name)
+}
+
+func (elem *CertificatesWidgetElem) ExpiryDate() *tview.TableCell {
+	return tview.NewTableCell(elem.Certificate.ExpiryDate)
 }

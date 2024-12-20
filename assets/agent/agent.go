@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/user"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,70 +36,69 @@ func main() {
 	var socksProxy = `{{ .SocksServer }}`
 	var socksUser = `{{ .SocksUser }}`
 	var socksPass = `{{ .SocksPass }}`
-	var serverAddr = `{{ .Server }}`
+	var servers = strings.Split(`{{ .Servers }}`, "\n")
 	var AgentCert = []byte(`{{ .AgentCert }}`)
 	var AgentKey = []byte(`{{ .AgentKey }}`)
 	var CACert = []byte(`{{ .CACert }}`)
 
-	if serverAddr == "" {
-		panic("missing server addr")
-	}
-	host, _, err := net.SplitHostPort(serverAddr)
-	if err != nil {
-		panic("invalid server addr")
-	}
-
-	ca := x509.NewCertPool()
-	if ok := ca.AppendCertsFromPEM(CACert); !ok {
-		panic("failed to parse CACert")
-	}
-
-	mtlsCert, err := tls.X509KeyPair(AgentCert, AgentKey)
-	if err != nil {
-		panic(err)
-	}
-
-	tlsConfig = tls.Config{
-		RootCAs:            ca,
-		ServerName:         host,
-		Certificates:       []tls.Certificate{mtlsCert},
-		InsecureSkipVerify: true,
-		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
-			cert, err := x509.ParseCertificate(rawCerts[0])
-			if err != nil {
-				return err
-			}
-
-			options := x509.VerifyOptions{
-				Roots: ca,
-			}
-			if options.Roots == nil {
-				return errors.New("no root certificate")
-			}
-			if _, err := cert.Verify(options); err != nil {
-				return err
-			}
-
-			return nil
-		},
-	}
-
 	var conn net.Conn
-
 	redirectorMap = make(map[string]relay.Redirector)
 
 	for {
-		var err error
-		if socksProxy != "" {
-			if _, _, err := net.SplitHostPort(socksProxy); err != nil {
-				panic("invalid socks5 address")
+		for _, server := range servers {
+			host, _, err := net.SplitHostPort(server)
+			if err != nil {
+				panic("invalid server addr")
 			}
-			conn, err = sockDial(serverAddr, socksProxy, socksUser, socksPass)
-		} else {
-			conn, err = net.Dial("tcp", serverAddr)
-		}
-		if err == nil {
-			connect(conn, &tlsConfig)
+
+			ca := x509.NewCertPool()
+			if ok := ca.AppendCertsFromPEM(CACert); !ok {
+				panic("failed to parse CACert")
+			}
+
+			mtlsCert, err := tls.X509KeyPair(AgentCert, AgentKey)
+			if err != nil {
+				panic(err)
+			}
+
+			tlsConfig = tls.Config{
+				RootCAs:            ca,
+				ServerName:         host,
+				Certificates:       []tls.Certificate{mtlsCert},
+				InsecureSkipVerify: true,
+				VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
+					cert, err := x509.ParseCertificate(rawCerts[0])
+					if err != nil {
+						return err
+					}
+
+					options := x509.VerifyOptions{
+						Roots: ca,
+					}
+					if options.Roots == nil {
+						return errors.New("no root certificate")
+					}
+					if _, err := cert.Verify(options); err != nil {
+						return err
+					}
+
+					return nil
+				},
+			}
+
+			if socksProxy != "" {
+				if _, _, err := net.SplitHostPort(socksProxy); err != nil {
+					panic("invalid socks5 address")
+				}
+				conn, err = sockDial(server, socksProxy, socksUser, socksPass)
+			} else {
+				conn, err = net.DialTimeout("tcp", server, 5*time.Second)
+			}
+
+			if err == nil {
+				connect(conn, &tlsConfig)
+				break
+			}
 		}
 
 		time.Sleep(5 * time.Second)
@@ -110,6 +110,8 @@ func sockDial(serverAddr string, socksProxy string, socksUser string, socksPass 
 		User:     socksUser,
 		Password: socksPass,
 	}, goproxy.Direct)
+
+	goproxy.FromEnvironment()
 	if err != nil {
 		panic(err)
 	}

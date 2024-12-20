@@ -2,16 +2,12 @@ package pages
 
 import (
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	forms "github.com/ttpreport/ligolo-mp/cmd/client/tui/forms"
 	modals "github.com/ttpreport/ligolo-mp/cmd/client/tui/modals"
-	"github.com/ttpreport/ligolo-mp/cmd/client/tui/style"
 	widgets "github.com/ttpreport/ligolo-mp/cmd/client/tui/widgets"
-	"github.com/ttpreport/ligolo-mp/internal/events"
 	"github.com/ttpreport/ligolo-mp/internal/operator"
 	pb "github.com/ttpreport/ligolo-mp/protobuf"
 )
@@ -26,7 +22,6 @@ type DashboardPage struct {
 	interfaces  *widgets.InterfacesWidget
 	routes      *widgets.RoutesWidget
 	redirectors *widgets.RedirectorsWidget
-	logs        *tview.TextView
 
 	getData                     func() ([]*pb.Session, error)
 	adminFunc                   func()
@@ -54,13 +49,11 @@ func NewDashboardPage() *DashboardPage {
 		interfaces:  widgets.NewInterfacesWidget(),
 		routes:      widgets.NewRoutesWidget(),
 		redirectors: widgets.NewRedirectorsWidget(),
-		logs:        tview.NewTextView(),
 	}
 
 	dash.initSessionsWidget()
 	dash.initRoutesWidget()
 	dash.initRedirectorsWidget()
-	dash.initLogsWidget()
 
 	firstRow := tview.NewFlex()
 	firstRow.SetDirection(tview.FlexColumn)
@@ -74,9 +67,8 @@ func NewDashboardPage() *DashboardPage {
 
 	dash.flex.SetDirection(tview.FlexRow)
 	dash.flex.AddItem(dash.server, 3, 0, false)
-	dash.flex.AddItem(firstRow, 0, 40, true)
-	dash.flex.AddItem(secondRow, 0, 40, false)
-	dash.flex.AddItem(dash.logs, 0, 20, false)
+	dash.flex.AddItem(firstRow, 0, 50, true)
+	dash.flex.AddItem(secondRow, 0, 50, false)
 
 	dash.AddAndSwitchToPage("main", dash.flex, true)
 
@@ -273,15 +265,6 @@ func (dash *DashboardPage) initRedirectorsWidget() {
 	})
 }
 
-func (dash *DashboardPage) initLogsWidget() {
-	dash.logs.SetTextAlign(tview.AlignTop).SetTextColor(style.FgColor).SetDynamicColors(true)
-	dash.logs.SetBorder(true)
-	dash.logs.SetBorderColor(style.BorderColor)
-	dash.logs.SetTitleColor(style.FgColor)
-	dash.logs.SetBackgroundColor(style.BgColor)
-	dash.logs.SetTitle(fmt.Sprintf("[::b]%s", strings.ToUpper("log")))
-}
-
 func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 		key := event.Key()
@@ -298,7 +281,6 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 					dash.interfaces,
 					dash.routes,
 					dash.redirectors,
-					dash.logs,
 				}
 
 				for id, pane := range focusOrder {
@@ -310,7 +292,6 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 				}
 			case tcell.KeyCtrlD:
 				dash.disconnectFunc()
-				dash.TruncateLog()
 			case tcell.KeyCtrlN:
 				gen := forms.NewGenerateForm()
 				gen.SetSubmitFunc(func(req *pb.GenerateAgentReq, path string) {
@@ -323,7 +304,6 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 
 						dash.RemovePage(gen.GetID())
 						dash.ShowInfo(fmt.Sprintf("Agent binary saved to %s", fullPath), nil)
-						dash.AppendLog(events.OK, fmt.Sprintf("Agent binary saved to %s", fullPath))
 					})
 				})
 				gen.SetCancelFunc(func() {
@@ -431,17 +411,6 @@ func (dash *DashboardPage) GetNavBar() []widgets.NavBarElem {
 	}
 
 	return navbar
-}
-
-func (dash *DashboardPage) AppendLog(severity events.EventType, data string) {
-	currentLog := dash.logs.GetText(true)
-	date := time.Now().UTC().Format(time.RFC3339)
-	newLog := fmt.Sprintf("%s (%s) | %s\n%s", date, severity, data, currentLog)
-	dash.logs.SetText(newLog)
-}
-
-func (dash *DashboardPage) TruncateLog() {
-	dash.logs.SetText("")
 }
 
 func (dash *DashboardPage) DoWithLoader(text string, action func()) {

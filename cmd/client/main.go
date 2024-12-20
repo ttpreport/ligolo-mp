@@ -7,6 +7,7 @@ import (
 	"github.com/ttpreport/ligolo-mp/cmd/client/tui"
 	"github.com/ttpreport/ligolo-mp/internal/certificate"
 	"github.com/ttpreport/ligolo-mp/internal/config"
+	"github.com/ttpreport/ligolo-mp/internal/crl"
 	"github.com/ttpreport/ligolo-mp/internal/operator"
 	"github.com/ttpreport/ligolo-mp/internal/storage"
 )
@@ -25,15 +26,26 @@ func main() {
 		panic(fmt.Sprintf("could not connect to storage: %v", err))
 	}
 
-	operRepo, _ := operator.NewOperatorRepository(storage)
-	certRepo, _ := certificate.NewCertificateRepository(storage)
+	operRepo, err := operator.NewOperatorRepository(storage)
+	if err != nil {
+		panic(err)
+	}
 
-	certService := certificate.NewCertificateService(certRepo)
+	certRepo, err := certificate.NewCertificateRepository(storage)
+	if err != nil {
+		panic(err)
+	}
+
+	crlRepo, err := crl.NewCRLRepository(storage)
+	if err != nil {
+		panic(err)
+	}
+
+	crlService := crl.NewCRLService(crlRepo)
+	certService := certificate.NewCertificateService(certRepo, crlService)
 	operService := operator.NewOperatorService(cfg, operRepo, certService)
 
 	if *credsFile == "" {
-		// cli.Run(operService, certService)
-
 		app := tui.NewApp(operService)
 		app.Run()
 	} else {

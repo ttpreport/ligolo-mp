@@ -29,16 +29,17 @@ func NewGenerateForm() *GenerateForm {
 	gen.form.SetBorder(true)
 	gen.form.SetButtonsAlign(tview.AlignCenter)
 
-	gen.form.AddInputField(
-		"Server",
-		"",
-		0,
-		func(textToCheck string, lastChar rune) bool {
-			return true
-		},
+	gen.form.AddInputField("Save to", "", 0, nil,
 		func(text string) {
-			gen.req.Server = text
-		})
+			gen.path = text
+		},
+	)
+
+	gen.form.AddTextArea("Server (one per line)", "", 0, 0, 0,
+		func(text string) {
+			gen.req.Servers = text
+		},
+	)
 
 	gen.form.AddDropDown("OS", []string{"Windows", "Linux", "Darwin"}, 0, func(option string, _ int) {
 		gen.req.GOOS = strings.ToLower(option)
@@ -52,10 +53,28 @@ func NewGenerateForm() *GenerateForm {
 		gen.req.Obfuscate = checked
 	})
 
-	gen.form.AddInputField("Save to", "", 0, func(textToCheck string, lastChar rune) bool {
-		return true
-	}, func(text string) {
-		gen.path = text
+	gen.form.AddCheckbox("Use proxy", false, func(checked bool) {
+		if checked {
+			gen.form.AddInputField("Proxy host", "", 0, nil,
+				func(text string) {
+					gen.req.SocksServer = text
+				},
+			)
+			gen.form.AddInputField("Proxy user", "", 0, nil,
+				func(text string) {
+					gen.req.SocksUser = text
+				},
+			)
+			gen.form.AddInputField("Proxy pass", "", 0, nil,
+				func(text string) {
+					gen.req.SocksPass = text
+				},
+			)
+		} else {
+			gen.form.RemoveFormItem(gen.form.GetFormItemIndex("Proxy host"))
+			gen.form.RemoveFormItem(gen.form.GetFormItemIndex("Proxy user"))
+			gen.form.RemoveFormItem(gen.form.GetFormItemIndex("Proxy pass"))
+		}
 	})
 
 	gen.form.AddButton("Submit", nil)

@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/ttpreport/ligolo-mp/internal/crl"
 )
 
 type CertificateService struct {
@@ -20,14 +22,16 @@ type CertificateService struct {
 	operatorCertName string
 	agentCertName    string
 	repo             *CertificateRepository
+	crl              *crl.CRLService
 }
 
-func NewCertificateService(repo *CertificateRepository) *CertificateService {
+func NewCertificateService(repo *CertificateRepository, crl *crl.CRLService) *CertificateService {
 	return &CertificateService{
-		caName:           "_CA_",
-		operatorCertName: "_SERVER_",
-		agentCertName:    "_AGENT_",
+		caName:           "__CA",
+		operatorCertName: "__OPERATORS",
+		agentCertName:    "__AGENTS",
 		repo:             repo,
+		crl:              crl,
 	}
 }
 
@@ -61,7 +65,7 @@ func (cs *CertificateService) RegenerateCert(name string) (*Certificate, error) 
 		return nil, err
 	}
 
-	CACert := cs.repo.GetOne(name)
+	CACert := cs.repo.GetOne(cs.caName)
 	if CACert == nil {
 		return nil, fmt.Errorf("CA certificate not found")
 	}
@@ -248,4 +252,12 @@ func (cs *CertificateService) GenerateCert(name string, CAcert *Certificate) (*C
 
 func (cs *CertificateService) Thumbprint(rawCert []byte) [sha1.Size]byte {
 	return sha1.Sum(rawCert)
+}
+
+func (cs *CertificateService) Revoke(cert *Certificate, reason string) error {
+	return cs.crl.Revoke(cert.Thumbprint, reason)
+}
+
+func (cs *CertificateService) IsRevoked(cert *x509.Certificate) bool {
+	return cs.crl.IsRevoked(cs.Thumbprint(cert.Raw))
 }

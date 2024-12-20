@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -24,12 +25,32 @@ import (
 type ligoloServer struct {
 	pb.UnimplementedLigoloServer
 	connMutex     sync.RWMutex
-	connections   map[string]pb.Ligolo_JoinServer
+	connections   map[string]*ligoloConnection
 	ligoloConfig  *config.Config
 	sessService   *session.SessionService
 	certService   *certificate.CertificateService
 	operService   *operator.OperatorService
 	assetsService *assets.AssetsService
+}
+
+type ligoloConnection struct {
+	Stream pb.Ligolo_JoinServer
+	kill   chan bool
+}
+
+func (c *ligoloConnection) Kill() <-chan bool {
+	return c.kill
+}
+
+func (c *ligoloConnection) Terminate() {
+	c.kill <- true
+}
+
+func NewLigoloConnection(stream pb.Ligolo_JoinServer) *ligoloConnection {
+	return &ligoloConnection{
+		Stream: stream,
+		kill:   make(chan bool),
+	}
 }
 
 func (s *ligoloServer) Join(in *pb.Empty, stream pb.Ligolo_JoinServer) error {
@@ -46,10 +67,16 @@ func (s *ligoloServer) Join(in *pb.Empty, stream pb.Ligolo_JoinServer) error {
 	events.Publish(events.OK, "%s joined the game", oper.Name)
 
 	s.connMutex.Lock()
-	s.connections[oper.Name] = stream
+	connection := NewLigoloConnection(stream)
+	s.connections[oper.Name] = connection
 	s.connMutex.Unlock()
 
-	<-stream.Context().Done()
+	select {
+	case <-stream.Context().Done():
+		slog.Info("Connection gracefully closed", slog.Any("operator", oper.Name))
+	case <-connection.Kill():
+		slog.Info("Received request to kill connection", slog.Any("operator", oper.Name))
+	}
 
 	s.connMutex.Lock()
 	delete(s.connections, oper.Name)
@@ -69,9 +96,9 @@ func (s *ligoloServer) HandleEvents() {
 			Data: event.Data,
 		}
 
-		for _, stream := range s.connections {
+		for _, connection := range s.connections {
 			slog.Debug("trying to send event to operator")
-			if err := stream.Send(pbEvent); err != nil {
+			if err := connection.Stream.Send(pbEvent); err != nil {
 				slog.Error("Sending event to operator failed", slog.Any("reason", err))
 			}
 		}
@@ -226,7 +253,7 @@ func (s *ligoloServer) GenerateAgent(ctx context.Context, in *pb.GenerateAgentRe
 		in.SocksServer,
 		in.SocksUser,
 		in.SocksPass,
-		in.Server,
+		in.Servers,
 		string(CACert.Certificate),
 		string(cert.Certificate),
 		string(cert.Key),
@@ -312,7 +339,7 @@ func (s *ligoloServer) AddOperator(ctx context.Context, in *pb.AddOperatorReq) (
 	}, nil
 }
 
-func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (*pb.Empty, error) { // TODO fully revoke user's certificate
+func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (*pb.Empty, error) {
 	slog.Debug("Received request to delete operator", slog.Any("in", in))
 	oper := ctx.Value("operator").(*operator.Operator)
 	if !oper.IsAdmin {
@@ -346,7 +373,14 @@ func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (
 		}
 	}
 
-	_, err = s.operService.RemoveOperator(in.Name)
+	s.connections[targetOper.Name].Terminate()
+
+	removedOperator, err := s.operService.RemoveOperator(in.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.certService.Revoke(removedOperator.Cert, "removed by admin")
 	if err != nil {
 		return nil, err
 	}
@@ -457,6 +491,17 @@ func (s *ligoloServer) operatorFromContext(ctx context.Context) (*operator.Opera
 	return operator, nil
 }
 
+func (s *ligoloServer) certificateFromContext(ctx context.Context) (*x509.Certificate, error) {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil, errors.New("unknown error reading grpc context")
+	}
+
+	tlsInfo := p.AuthInfo.(credentials.TLSInfo)
+
+	return tlsInfo.State.VerifiedChains[0][0], nil
+}
+
 func (s *ligoloServer) unaryAuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	oper, err := s.operatorFromContext(ctx)
 	if err != nil {
@@ -496,9 +541,32 @@ func Run(config *config.Config, certService *certificate.CertificateService, ses
 		RootCAs:            certPool,
 		MinVersion:         tls.VersionTLS13,
 		MaxVersion:         tls.VersionTLS13,
+		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			cert, err := x509.ParseCertificate(rawCerts[0])
+			if err != nil {
+				return err
+			}
+
+			options := x509.VerifyOptions{
+				Roots: certPool,
+			}
+			if options.Roots == nil {
+				return errors.New("no root certificate")
+			}
+			if _, err := cert.Verify(options); err != nil {
+				return err
+			}
+
+			incomingCert := verifiedChains[0][0]
+			if certService.IsRevoked(incomingCert) {
+				return errors.New("certificate has been revoked")
+			}
+
+			return nil
+		},
 	}
 	ligoloServer := &ligoloServer{
-		connections:   make(map[string]pb.Ligolo_JoinServer),
+		connections:   make(map[string]*ligoloConnection),
 		ligoloConfig:  config,
 		sessService:   sessService,
 		certService:   certService,

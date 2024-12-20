@@ -107,7 +107,7 @@ TODO
 
 ## Does it require Administrator/root access ?
 
-On the *agent* side, no! Everything can be performed without administrative access.
+On the *agent* side - no! Everything can be performed without administrative access.
 
 However, on your the *server*, you need to be able to create/modify *tun* interfaces.
 
@@ -124,4 +124,5 @@ When using *nmap*, you should use `--unprivileged` or `-PE` to avoid false posit
 - Client-server protocol: switch to something portable to make it possible to generate non-golang agents
 - Install script: installs service
 - Persistent TUNs (?)
-- Unique certificate per generated agent binary for granular revocation
+- Unique certificate per generated agent binary for granular revocation - create an issue if you need this, I don't know if it's really needed
+- Get rid of db on client - use files (?)

@@ -152,7 +152,7 @@ message DelRouteReq {
 }
 
 message GenerateAgentReq {
-  string Server = 1;
+  string Servers = 1;
   string GOOS = 2;
   string GOARCH = 3;
   bool Obfuscate = 4;

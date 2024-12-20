@@ -19,8 +19,10 @@ import (
 )
 
 type App struct {
-	*tview.Application
+	tview.Application
+	layout       *tview.Flex
 	pages        *tview.Pages
+	logs         *widgets.LogsWidget
 	credentials  *pages.CredentialsPage
 	dashboard    *pages.DashboardPage
 	admin        *pages.AdminPage
@@ -34,8 +36,10 @@ type App struct {
 
 func NewApp(operService *operator.OperatorService) *App {
 	app := &App{
-		Application: tview.NewApplication(),
+		Application: *tview.NewApplication(),
+		layout:      tview.NewFlex(),
 		pages:       tview.NewPages(),
+		logs:        widgets.NewLogsWidget(),
 		credentials: pages.NewCredentialsPage(),
 		dashboard:   pages.NewDashboardPage(),
 		admin:       pages.NewAdminPage(),
@@ -46,6 +50,10 @@ func NewApp(operService *operator.OperatorService) *App {
 	app.initCredentials()
 	app.initDashboard()
 	app.initAdmin()
+
+	app.layout.SetDirection(tview.FlexRow)
+	app.layout.AddItem(app.pages, 0, 80, false)
+	app.layout.AddItem(app.logs, 0, 20, true)
 
 	app.SwitchToPage(app.credentials)
 
@@ -86,6 +94,7 @@ func (app *App) initCredentials() {
 		app.dashboard.SetOperator(oper)
 		app.admin.SetOperator(oper)
 		app.SwitchToPage(app.dashboard)
+
 		return nil
 	})
 
@@ -133,6 +142,8 @@ func (app *App) initDashboard() {
 
 	app.dashboard.SetDisconnectFunc(func() {
 		app.operator.Disconnect()
+		app.log(events.ERROR, fmt.Sprintf("Disconnected from %s", app.operator.Server))
+
 		app.operator = nil
 
 		app.SwitchToPage(app.credentials)
@@ -335,23 +346,110 @@ func (app *App) initAdmin() {
 		return err
 	})
 
+	app.admin.SetRegenCertFunc(func(name string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		defer cancel()
+
+		_, err := app.operator.Client().RegenCert(ctx, &pb.RegenCertReq{
+			Name: name,
+		})
+
+		return err
+	})
+
+	app.admin.SetDisconnectFunc(func() {
+		app.operator.Disconnect()
+		app.log(events.ERROR, fmt.Sprintf("Disconnected from %s", app.operator.Server))
+
+		app.operator = nil
+
+		app.SwitchToPage(app.credentials)
+	})
+
 	app.pages.AddPage(app.credentials.GetID(), app.credentials, true, false)
+}
+
+func (app *App) log(severity events.EventType, data string) {
+	app.logs.Append(severity, data)
+}
+
+func (app *App) HandleOperatorEvents() {
+	defer func() {
+		app.ShowError("Disconnected from the server", func() {
+			app.SwitchToPage(app.credentials)
+		})
+	}()
+
+	eventStream, err := app.operator.Client().Join(context.Background(), &pb.Empty{})
+	if err != nil {
+		app.log(events.ERROR, fmt.Sprintf("Could not join event stream: %s", err))
+		return
+	}
+
+	for {
+		event, err := eventStream.Recv()
+		if err != nil {
+			return
+		}
+
+		app.dashboard.RefreshData()
+		app.admin.RefreshData()
+
+		app.log(events.EventType(event.Type), event.Data)
+	}
+}
+
+func (app *App) SwitchOperator(oper *operator.Operator) error {
+	if app.operator != nil {
+		app.log(events.ERROR, fmt.Sprintf("Disconnected from %s", app.operator.Server))
+		app.operator.Disconnect()
+		app.operator = nil
+	}
+
+	app.log(events.OK, fmt.Sprintf("Connecting to %s as %s", oper.Server, oper.Name))
+
+	err := oper.Connect()
+	if err != nil {
+		app.log(events.OK, fmt.Sprintf("Could not connect to %s: %s", oper.Server, err))
+		return err
+	}
+
+	app.log(events.OK, fmt.Sprintf("Connected to %s", oper.Server))
+
+	app.operator = oper
+	go app.HandleOperatorEvents()
+
+	return nil
+}
+
+func (app *App) ShowError(text string, done func()) {
+	modal := modals.NewErrorModal()
+	modal.SetText(text)
+	modal.SetDoneFunc(func(_ int, _ string) {
+		app.pages.RemovePage(modal.GetID())
+
+		if done != nil {
+			done()
+		}
+	})
+	app.pages.AddPage(modal.GetID(), modal, true, true)
 }
 
 func (app *App) Run() error {
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(app.pages, 0, 99, true).
+		AddItem(app.layout, 0, 99, true).
 		AddItem(app.navbar, 0, 1, false)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch key := event.Key(); key {
 		case utils.AppInterruptKey.Key:
 			return tcell.NewEventKey(key, 0, tcell.ModNone)
-
+		case tcell.KeyCtrlL:
+			// TODO: fullscreen logs and back
+			return nil
 		case utils.AppExitKey.Key:
 			app.Stop()
-			os.Exit(0)
 			return nil
 		}
 
@@ -363,65 +461,6 @@ func (app *App) Run() error {
 	if err := app.SetRoot(flex, true).SetFocus(app.pages).EnablePaste(true).Run(); err != nil {
 		return err
 	}
-
-	return nil
-}
-
-func (app *App) log(severity events.EventType, data string) {
-	app.dashboard.AppendLog(severity, data)
-
-}
-
-func (app *App) HandleOperatorEvents() {
-	for {
-		var eventStream pb.Ligolo_JoinClient
-		var err error
-
-		for {
-			if app.operator == nil {
-				return
-			}
-
-			eventStream, err = app.operator.Client().Join(context.Background(), &pb.Empty{})
-			if err == nil {
-				app.log(events.OK, "Connected!")
-				break
-			} else {
-				app.log(events.ERROR, "Could not connect. Reconnecting...")
-				time.Sleep(5 * time.Second)
-			}
-		}
-
-		for {
-			event, err := eventStream.Recv()
-
-			if err != nil {
-				app.log(events.ERROR, "Disconnected!")
-				break
-			}
-
-			app.dashboard.RefreshData()
-			app.admin.RefreshData()
-
-			app.log(events.EventType(event.Type), event.Data)
-		}
-	}
-}
-
-func (app *App) SwitchOperator(oper *operator.Operator) error {
-	if app.operator != nil {
-		app.operator.Disconnect()
-		app.operator = nil
-	}
-
-	err := oper.Connect()
-	if err != nil {
-		return err
-	}
-
-	app.operator = oper
-
-	go app.HandleOperatorEvents()
 
 	return nil
 }

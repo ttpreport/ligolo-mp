@@ -12,6 +12,7 @@ import (
 	"github.com/ttpreport/ligolo-mp/cmd/server/rpc"
 	"github.com/ttpreport/ligolo-mp/internal/certificate"
 	"github.com/ttpreport/ligolo-mp/internal/config"
+	"github.com/ttpreport/ligolo-mp/internal/crl"
 	"github.com/ttpreport/ligolo-mp/internal/operator"
 	"github.com/ttpreport/ligolo-mp/internal/session"
 	"github.com/ttpreport/ligolo-mp/internal/storage"
@@ -53,11 +54,28 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	certRepo, _ := certificate.NewCertificateRepository(storage)
-	sessRepo, _ := session.NewSessionRepository(storage)
-	operRepo, _ := operator.NewOperatorRepository(storage)
+	certRepo, err := certificate.NewCertificateRepository(storage)
+	if err != nil {
+		panic(err)
+	}
 
-	certService := certificate.NewCertificateService(certRepo)
+	crlRepo, err := crl.NewCRLRepository(storage)
+	if err != nil {
+		panic(err)
+	}
+
+	sessRepo, err := session.NewSessionRepository(storage)
+	if err != nil {
+		panic(err)
+	}
+
+	operRepo, err := operator.NewOperatorRepository(storage)
+	if err != nil {
+		panic(err)
+	}
+
+	crlService := crl.NewCRLService(crlRepo)
+	certService := certificate.NewCertificateService(certRepo, crlService)
 	sessService := session.NewSessionService(cfg, sessRepo)
 	operService := operator.NewOperatorService(cfg, operRepo, certService)
 	assetsService := assets.NewAssetsService(cfg)

@@ -11,6 +11,7 @@ import (
 
 type Certificate struct {
 	Name        string
+	caName      string
 	Certificate []byte
 	Key         []byte
 	Thumbprint  [sha1.Size]byte

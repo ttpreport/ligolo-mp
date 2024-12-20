@@ -124,12 +124,13 @@ func GoBuild(config GoConfig, src string, dest string) ([]byte, error) {
 	target := fmt.Sprintf("%s/%s", config.GOOS, config.GOARCH)
 
 	if _, ok := ValidCompilerTargets(config)[target]; !ok {
-		return nil, fmt.Errorf(fmt.Sprintf("Invalid compiler target: %s", target))
+		return nil, fmt.Errorf("Invalid compiler target: %s", target)
 	}
 	var goCommand = []string{"build"}
 
 	goCommand = append(goCommand, "-trimpath") // remove absolute paths from any compiled binary
 	goCommand = append(goCommand, "-mod=vendor")
+	goCommand = append(goCommand, []string{"-ldflags", "-s -w"}...) // strip binary
 	goCommand = append(goCommand, []string{"-o", dest, "."}...)
 
 	if config.Obfuscate {
