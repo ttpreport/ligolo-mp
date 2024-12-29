@@ -1,8 +1,6 @@
 module github.com/ttpreport/ligolo-mp/internal/agent
 
-go 1.22.3
-
-toolchain go1.23.2
+go 1.23.2
 
 replace github.com/ttpreport/ligolo-mp => ../../
 

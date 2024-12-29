@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"os/user"
 	"strings"
@@ -14,11 +15,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/yamux"
+	connectproxy "github.com/ttpreport/ligolo-mp/internal/agent/proxy/connect"
 	"github.com/ttpreport/ligolo-mp/internal/netstack/neterror"
 	"github.com/ttpreport/ligolo-mp/internal/netstack/smartping"
 	"github.com/ttpreport/ligolo-mp/internal/protocol"
 	"github.com/ttpreport/ligolo-mp/internal/relay"
-	goproxy "golang.org/x/net/proxy"
+	"golang.org/x/net/proxy"
 )
 
 var (
@@ -32,10 +34,14 @@ func main() {
 		}
 	}()
 
+	timeout := 10 * time.Second
+	proxy.RegisterDialerType("http", connectproxy.HttpHandler(timeout))
+	proxy.RegisterDialerType("https", connectproxy.HttpsHandler(timeout, &tls.Config{
+		InsecureSkipVerify: true,
+	}))
+
 	var tlsConfig tls.Config
-	var socksProxy = `{{ .SocksServer }}`
-	var socksUser = `{{ .SocksUser }}`
-	var socksPass = `{{ .SocksPass }}`
+	var proxyServer = `{{ .ProxyServer }}`
 	var servers = strings.Split(`{{ .Servers }}`, "\n")
 	var AgentCert = []byte(`{{ .AgentCert }}`)
 	var AgentKey = []byte(`{{ .AgentKey }}`)
@@ -48,17 +54,17 @@ func main() {
 		for _, server := range servers {
 			host, _, err := net.SplitHostPort(server)
 			if err != nil {
-				panic("invalid server addr")
+				continue
 			}
 
 			ca := x509.NewCertPool()
 			if ok := ca.AppendCertsFromPEM(CACert); !ok {
-				panic("failed to parse CACert")
+				continue
 			}
 
 			mtlsCert, err := tls.X509KeyPair(AgentCert, AgentKey)
 			if err != nil {
-				panic(err)
+				continue
 			}
 
 			tlsConfig = tls.Config{
@@ -86,36 +92,32 @@ func main() {
 				},
 			}
 
-			if socksProxy != "" {
-				if _, _, err := net.SplitHostPort(socksProxy); err != nil {
-					panic("invalid socks5 address")
+			if proxyServer != "" {
+				u, err := url.Parse(proxyServer)
+				if nil != err {
+					continue
 				}
-				conn, err = sockDial(server, socksProxy, socksUser, socksPass)
+				d, err := proxy.FromURL(u, proxy.Direct)
+				if nil != err {
+					continue
+				}
+
+				conn, err = d.Dial("tcp", server)
+				if err != nil {
+					continue
+				}
 			} else {
 				conn, err = net.DialTimeout("tcp", server, 5*time.Second)
+				if err != nil {
+					continue
+				}
 			}
 
-			if err == nil {
-				connect(conn, &tlsConfig)
-				break
-			}
+			connect(conn, &tlsConfig)
 		}
 
 		time.Sleep(5 * time.Second)
 	}
-}
-
-func sockDial(serverAddr string, socksProxy string, socksUser string, socksPass string) (net.Conn, error) {
-	proxyDialer, err := goproxy.SOCKS5("tcp", socksProxy, &goproxy.Auth{
-		User:     socksUser,
-		Password: socksPass,
-	}, goproxy.Direct)
-
-	goproxy.FromEnvironment()
-	if err != nil {
-		panic(err)
-	}
-	return proxyDialer.Dial("tcp", serverAddr)
 }
 
 func connect(conn net.Conn, config *tls.Config) error {
@@ -138,7 +140,7 @@ func connect(conn net.Conn, config *tls.Config) error {
 func handleConn(conn net.Conn) {
 	decoder := protocol.NewDecoder(conn)
 	if err := decoder.Decode(); err != nil {
-		panic(err)
+		return
 	}
 
 	e := decoder.Envelope.Payload

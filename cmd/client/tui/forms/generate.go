@@ -55,19 +55,9 @@ func NewGenerateForm() *GenerateForm {
 
 	gen.form.AddCheckbox("Use proxy", false, func(checked bool) {
 		if checked {
-			gen.form.AddInputField("Proxy host", "", 0, nil,
+			gen.form.AddInputField("Proxy address", "", 0, nil,
 				func(text string) {
-					gen.req.SocksServer = text
-				},
-			)
-			gen.form.AddInputField("Proxy user", "", 0, nil,
-				func(text string) {
-					gen.req.SocksUser = text
-				},
-			)
-			gen.form.AddInputField("Proxy pass", "", 0, nil,
-				func(text string) {
-					gen.req.SocksPass = text
+					gen.req.ProxyServer = text
 				},
 			)
 		} else {
@@ -79,7 +69,6 @@ func NewGenerateForm() *GenerateForm {
 
 	gen.form.AddButton("Submit", nil)
 	gen.form.AddButton("Cancel", nil)
-	//TODO: socks proxy settings
 
 	gen.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).

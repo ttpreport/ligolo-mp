@@ -2,6 +2,8 @@ module github.com/ttpreport/ligolo-mp
 
 go 1.23.2
 
+replace github.com/ttpreport/ligolo-mp => ./
+
 require (
 	github.com/desertbit/grumble v1.1.3
 	github.com/go-ping/ping v1.1.0
@@ -15,7 +17,6 @@ require (
 require (
 	github.com/fatih/color v1.16.0
 	github.com/gdamore/tcell/v2 v2.7.4
-	github.com/manifoldco/promptui v0.9.0
 	github.com/nutsdb/nutsdb v1.0.4
 	github.com/rivo/tview v0.0.0-20240807205129-e4c497cc59ed
 	github.com/rs/xid v1.5.0
@@ -30,7 +31,6 @@ require (
 	github.com/antlabs/stl v0.0.1 // indirect
 	github.com/antlabs/timer v0.0.11 // indirect
 	github.com/bwmarrin/snowflake v0.3.0 // indirect
-	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/desertbit/closer/v3 v3.1.3 // indirect
 	github.com/desertbit/columnize v2.1.0+incompatible // indirect
 	github.com/desertbit/go-shlex v0.1.1 // indirect

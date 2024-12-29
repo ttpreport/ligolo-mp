@@ -79,13 +79,13 @@ func (t *Tun) Start(multiplex *yamux.Session, maxConnections int, maxInFlight in
 		}
 	}()
 
+	t.Active = true
+
 	slog.Debug("tun activated")
 
 	if err := t.ApplyRoutes(); err != nil {
 		slog.Error("could not apply routes")
 	}
-
-	t.Active = true
 
 	return nil
 }

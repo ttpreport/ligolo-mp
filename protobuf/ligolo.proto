@@ -156,9 +156,7 @@ message GenerateAgentReq {
   string GOOS = 2;
   string GOARCH = 3;
   bool Obfuscate = 4;
-  string SocksServer = 5; 
-  string SocksUser = 6;
-  string SocksPass = 7;
+  string ProxyServer = 5;
 }
 
 message GenerateAgentResp {

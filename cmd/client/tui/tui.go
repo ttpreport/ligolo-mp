@@ -20,6 +20,7 @@ import (
 
 type App struct {
 	tview.Application
+	root         *tview.Flex
 	layout       *tview.Flex
 	pages        *tview.Pages
 	logs         *widgets.LogsWidget
@@ -37,6 +38,7 @@ type App struct {
 func NewApp(operService *operator.OperatorService) *App {
 	app := &App{
 		Application: *tview.NewApplication(),
+		root:        tview.NewFlex(),
 		layout:      tview.NewFlex(),
 		pages:       tview.NewPages(),
 		logs:        widgets.NewLogsWidget(),
@@ -46,6 +48,10 @@ func NewApp(operService *operator.OperatorService) *App {
 		navbar:      widgets.NewNavBar(),
 		operService: operService,
 	}
+
+	app.root.SetDirection(tview.FlexRow).
+		AddItem(app.layout, 0, 99, true).
+		AddItem(app.navbar, 0, 1, false)
 
 	app.initCredentials()
 	app.initDashboard()
@@ -129,7 +135,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetDataFunc(func() ([]*pb.Session, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		r, err := app.operator.Client().GetSessions(ctx, &pb.Empty{})
@@ -165,7 +171,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetSessionStartFunc(func(sess *pb.Session) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().StartRelay(ctx, &pb.StartRelayReq{
 			SessionID: sess.ID,
@@ -174,7 +180,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetSessionStopFunc(func(sess *pb.Session) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().StopRelay(ctx, &pb.StopRelayReq{
 			SessionID: sess.ID,
@@ -183,7 +189,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetSessionRenameFunc(func(sess *pb.Session, alias string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().RenameSession(ctx, &pb.RenameSessionReq{
 			SessionID: sess.ID,
@@ -193,7 +199,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetSessionAddRouteFunc(func(sess *pb.Session, cidr string, loopback bool) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().AddRoute(ctx, &pb.AddRouteReq{
 			SessionID: sess.ID,
@@ -206,7 +212,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetSessionRemoveRouteFunc(func(sess *pb.Session, cidr string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().DelRoute(ctx, &pb.DelRouteReq{
 			SessionID: sess.ID,
@@ -216,7 +222,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetSessionAddRedirectorFunc(func(sess *pb.Session, from string, to string, proto string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().AddRedirector(ctx, &pb.AddRedirectorReq{
 			SessionID: sess.ID,
@@ -228,7 +234,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetSessionRemoveRedirectorFunc(func(sess *pb.Session, redirectorID string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().DelRedirector(ctx, &pb.DelRedirectorReq{
 			SessionID:    sess.ID,
@@ -238,7 +244,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetSessionKillFunc(func(sess *pb.Session) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().KillSession(ctx, &pb.KillSessionReq{
 			SessionID: sess.ID,
@@ -253,7 +259,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetOperatorsFunc(func() ([]*pb.Operator, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		r, err := app.operator.Client().GetOperators(ctx, &pb.Empty{})
@@ -265,7 +271,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetCertificatesFunc(func() ([]*pb.Cert, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		r, err := app.operator.Client().GetCerts(ctx, &pb.Empty{})
@@ -277,7 +283,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetExportOperatorFunc(func(name string, path string) (string, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		r, err := app.operator.Client().ExportOperator(ctx, &pb.ExportOperatorReq{
@@ -296,7 +302,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetAddOperatorFunc(func(name string, isAdmin bool, server string) (*pb.Operator, *pb.OperatorCredentials, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		r, err := app.operator.Client().AddOperator(ctx, &pb.AddOperatorReq{
@@ -314,7 +320,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetDelOperatorFunc(func(name string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		_, err := app.operator.Client().DelOperator(ctx, &pb.DelOperatorReq{
@@ -325,7 +331,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetPromoteOperatorFunc(func(name string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		_, err := app.operator.Client().PromoteOperator(ctx, &pb.PromoteOperatorReq{
@@ -336,7 +342,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetDemoteOperatorFunc(func(name string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		_, err := app.operator.Client().DemoteOperator(ctx, &pb.DemoteOperatorReq{
@@ -347,7 +353,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetRegenCertFunc(func(name string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 
 		_, err := app.operator.Client().RegenCert(ctx, &pb.RegenCertReq{
@@ -436,18 +442,10 @@ func (app *App) ShowError(text string, done func()) {
 }
 
 func (app *App) Run() error {
-	flex := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(app.layout, 0, 99, true).
-		AddItem(app.navbar, 0, 1, false)
-
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch key := event.Key(); key {
 		case utils.AppInterruptKey.Key:
 			return tcell.NewEventKey(key, 0, tcell.ModNone)
-		case tcell.KeyCtrlL:
-			// TODO: fullscreen logs and back
-			return nil
 		case utils.AppExitKey.Key:
 			app.Stop()
 			return nil
@@ -458,7 +456,7 @@ func (app *App) Run() error {
 
 	app.credentials.RefreshData()
 
-	if err := app.SetRoot(flex, true).SetFocus(app.pages).EnablePaste(true).Run(); err != nil {
+	if err := app.SetRoot(app.root, true).SetFocus(app.pages).EnablePaste(true).Run(); err != nil {
 		return err
 	}
 

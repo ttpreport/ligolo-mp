@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -23,12 +25,19 @@ var (
 )
 
 type AssetsService struct {
-	config *config.Config
+	config                *config.Config
+	supportedProxySchemes []string
 }
 
 func NewAssetsService(cfg *config.Config) *AssetsService {
 	return &AssetsService{
 		config: cfg,
+		supportedProxySchemes: []string{
+			"socks5",
+			"socks5h",
+			"http",
+			"https",
+		},
 	}
 }
 
@@ -46,7 +55,7 @@ func (assets *AssetsService) Init() error {
 	return nil
 }
 
-func (assets *AssetsService) renderAgent(socksServer string, socksUser string, socksPass string, servers string, CACert string, AgentCert string, AgentKey string) (string, error) {
+func (assets *AssetsService) renderAgent(proxyServer string, servers string, CACert string, AgentCert string, AgentKey string) (string, error) {
 	agentDir, err := assets.setupAgentDir()
 	if err != nil {
 		return "", err
@@ -71,18 +80,14 @@ func (assets *AssetsService) renderAgent(socksServer string, socksUser string, s
 
 	var tpl bytes.Buffer
 	data := struct {
-		SocksServer string
-		SocksUser   string
-		SocksPass   string
+		ProxyServer string
 		Servers     string
 		Retry       bool
 		CACert      string
 		AgentCert   string
 		AgentKey    string
 	}{
-		SocksServer: socksServer,
-		SocksUser:   socksUser,
-		SocksPass:   socksPass,
+		ProxyServer: proxyServer,
 		Servers:     servers,
 		CACert:      CACert,
 		AgentCert:   AgentCert,
@@ -126,14 +131,23 @@ func (assets *AssetsService) setupAgentDir() (string, error) {
 	return "", nil
 }
 
-func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate bool, socksServer string, socksUser string, socksPass string, servers string, CACert string, AgentCert string, AgentKey string) ([]byte, error) {
+func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate bool, proxyServer string, servers string, CACert string, AgentCert string, AgentKey string) ([]byte, error) {
 	for _, server := range strings.Split(servers, "\n") {
 		if _, _, err := net.SplitHostPort(server); err != nil {
-			return nil, fmt.Errorf("%s is invalid server", err)
+			return nil, fmt.Errorf("%s is invalid server: %s", server, err)
 		}
 	}
 
-	agentDir, err := assets.renderAgent(socksServer, socksUser, socksPass, servers, CACert, AgentCert, AgentKey)
+	u, err := url.Parse(proxyServer)
+	if err != nil {
+		return nil, fmt.Errorf("%s is invalid proxy: %s", proxyServer, err)
+	}
+
+	if !slices.Contains(assets.supportedProxySchemes, u.Scheme) {
+		return nil, fmt.Errorf("%s is not supported proxy scheme", u.Scheme)
+	}
+
+	agentDir, err := assets.renderAgent(proxyServer, servers, CACert, AgentCert, AgentKey)
 	if err != nil {
 		return nil, err
 	}
