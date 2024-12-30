@@ -61,13 +61,13 @@ archives:
   - 
     id: "server"
     builds: ['server']
-    name_template: "{{ .ProjectName }}_{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
+    name_template: "{{ .ProjectName }}_{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
     format: binary
 
   - 
     id: "client"
     builds: ['client-linux', 'client-windows']
-    name_template: "{{ .ProjectName }}_{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
+    name_template: "{{ .ProjectName }}_{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
     format: binary
 
 release:
