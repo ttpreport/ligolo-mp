@@ -69,6 +69,13 @@ archives:
     builds: ['client-linux', 'client-windows']
     name_template: "{{ .ProjectName }}_{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
     format: binary
+
 release:
   github:
+  disable: false
+
+checksum:
+  name_template: "{{ .ArtifactName }}.sig"
+  algorithm: sha256
+  split: true
   disable: false
