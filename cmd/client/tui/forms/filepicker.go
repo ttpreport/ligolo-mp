@@ -38,7 +38,7 @@ func NewFilepickerForm() *FilepickerPage {
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
 			AddItem(page.form, 21, 1, true).
-			AddItem(nil, 0, 1, false),
+			AddItem(nil, 0, 3, false),
 			0, 1, true).
 		AddItem(nil, 0, 1, false)
 

@@ -106,6 +106,10 @@ func (app *App) initCredentials() {
 	})
 
 	app.credentials.SetSelectedFunc(func(oper *operator.Operator) error {
+		if oper == nil {
+			return nil
+		}
+
 		err := app.SwitchOperator(oper)
 		if err != nil {
 			return err

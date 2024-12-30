@@ -41,9 +41,9 @@ func NewRenameForm() *RenameForm {
 
 	ren.Flex.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 0, 3, false).
-			AddItem(ren.form, 0, 1, true).
-			AddItem(nil, 0, 3, false),
+			AddItem(nil, 0, 1, false).
+			AddItem(ren.form, 7, 1, true).
+			AddItem(nil, 0, 1, false),
 			0, 1, true).
 		AddItem(nil, 0, 1, false)
 

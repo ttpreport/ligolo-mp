@@ -41,6 +41,12 @@ func NewGenerateForm() *GenerateForm {
 		},
 	)
 
+	gen.form.AddInputField("Proxy address", "", 0, nil,
+		func(text string) {
+			gen.req.ProxyServer = text
+		},
+	)
+
 	gen.form.AddDropDown("OS", []string{"Windows", "Linux", "Darwin"}, 0, func(option string, _ int) {
 		gen.req.GOOS = strings.ToLower(option)
 	})
@@ -53,28 +59,14 @@ func NewGenerateForm() *GenerateForm {
 		gen.req.Obfuscate = checked
 	})
 
-	gen.form.AddCheckbox("Use proxy", false, func(checked bool) {
-		if checked {
-			gen.form.AddInputField("Proxy address", "", 0, nil,
-				func(text string) {
-					gen.req.ProxyServer = text
-				},
-			)
-		} else {
-			gen.form.RemoveFormItem(gen.form.GetFormItemIndex("Proxy host"))
-			gen.form.RemoveFormItem(gen.form.GetFormItemIndex("Proxy user"))
-			gen.form.RemoveFormItem(gen.form.GetFormItemIndex("Proxy pass"))
-		}
-	})
-
 	gen.form.AddButton("Submit", nil)
 	gen.form.AddButton("Cancel", nil)
 
 	gen.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(gen.form, 15, 1, true).
-			AddItem(nil, 0, 1, false), 0, 1, true).
+			AddItem(gen.form, 21, 1, true).
+			AddItem(nil, 0, 1, false), 0, 3, true).
 		AddItem(nil, 0, 1, false)
 
 	return gen

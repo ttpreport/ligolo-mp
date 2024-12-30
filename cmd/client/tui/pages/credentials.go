@@ -126,12 +126,14 @@ func (creds *CredentialsPage) SetSelectedFunc(f func(*operator.Operator) error) 
 	creds.table.SetSelectedFunc(func(id, _ int) {
 		oper := creds.GetElem(id - 1)
 
-		creds.DoWithLoader("Connecting...", func() {
-			err := f(oper)
-			if err != nil {
-				creds.ShowError(fmt.Sprintf("Could not connect: %s", err))
-			}
-		})
+		if oper != nil {
+			creds.DoWithLoader("Connecting...", func() {
+				err := f(oper)
+				if err != nil {
+					creds.ShowError(fmt.Sprintf("Could not connect: %s", err))
+				}
+			})
+		}
 	})
 }
 

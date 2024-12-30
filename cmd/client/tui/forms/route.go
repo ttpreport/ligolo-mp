@@ -14,18 +14,18 @@ type AddRouteForm struct {
 }
 
 func NewAddRouteForm() *AddRouteForm {
-	ren := &AddRouteForm{
+	form := &AddRouteForm{
 		Flex:      *tview.NewFlex(),
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
 	}
 
-	ren.form.SetTitle("Rename session").SetTitleAlign(tview.AlignCenter)
-	ren.form.SetBorder(true)
-	ren.form.SetButtonsAlign(tview.AlignCenter)
+	form.form.SetTitle("Rename session").SetTitleAlign(tview.AlignCenter)
+	form.form.SetBorder(true)
+	form.form.SetButtonsAlign(tview.AlignCenter)
 
-	ren.form.AddInputField(
+	form.form.AddInputField(
 		"CIDR",
 		"",
 		0,
@@ -33,29 +33,29 @@ func NewAddRouteForm() *AddRouteForm {
 			return true
 		},
 		func(text string) {
-			ren.cidr = text
+			form.cidr = text
 		},
 	)
-	ren.form.AddCheckbox(
+	form.form.AddCheckbox(
 		"Loopback",
 		false,
 		func(checked bool) {
-			ren.loopback = checked
+			form.loopback = checked
 		},
 	)
 
-	ren.form.AddButton("Submit", nil)
-	ren.form.AddButton("Cancel", nil)
+	form.form.AddButton("Submit", nil)
+	form.form.AddButton("Cancel", nil)
 
-	ren.Flex.AddItem(nil, 0, 1, false).
+	form.Flex.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(ren.form, 9, 1, true).
+			AddItem(form.form, 9, 1, true).
 			AddItem(nil, 0, 1, false),
 			0, 1, true).
 		AddItem(nil, 0, 1, false)
 
-	return ren
+	return form
 }
 
 func (page *AddRouteForm) GetID() string {

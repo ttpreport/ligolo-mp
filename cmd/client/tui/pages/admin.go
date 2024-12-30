@@ -119,7 +119,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 			}))
 		}
 
-		menu.AddItem(modals.NewMenuModalElem("Remove", func() { // TODO force disconnect on remove
+		menu.AddItem(modals.NewMenuModalElem("Remove", func() {
 			admin.DoWithLoader("Removing operator...", func() {
 				err := admin.delOperator(elem.Operator.Name)
 				if err != nil {
