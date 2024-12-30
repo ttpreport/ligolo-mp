@@ -4,6 +4,8 @@ option go_package = "github.com/ttpreport/ligolo-mp/protobuf";
 
 package ligolo;
 
+import "google/protobuf/timestamp.proto";
+
 service Ligolo {
   rpc Join(Empty) returns (stream Event) {}
 
@@ -56,6 +58,8 @@ message Session {
   bool IsRelaying = 6;
   repeated Interface Interfaces = 7;
   repeated Redirector Redirectors = 8;
+  google.protobuf.Timestamp FirstSeen = 9;
+  google.protobuf.Timestamp LastSeen = 10;
 }
 
 message Tun {

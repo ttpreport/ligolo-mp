@@ -64,7 +64,6 @@ func (widget *RedirectorsWidget) SetData(data []*pb.Session) {
 	}
 
 	widget.Refresh()
-	widget.ResetSelector()
 }
 
 func (widget *RedirectorsWidget) SetSelectedSession(sess *pb.Session) {

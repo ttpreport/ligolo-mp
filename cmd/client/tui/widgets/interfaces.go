@@ -48,7 +48,6 @@ func (widget *InterfacesWidget) SetData(data []*pb.Session) {
 	}
 
 	widget.Refresh()
-	widget.ResetSelector()
 }
 
 func (widget *InterfacesWidget) ResetSelector() {

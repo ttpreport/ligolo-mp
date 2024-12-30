@@ -93,7 +93,6 @@ func (widget *SessionsWidget) SetData(data []*pb.Session) {
 		widget.data = append(widget.data, NewSessionsWidgetElem(session))
 	}
 
-	widget.ResetSelector()
 	widget.Refresh()
 }
 
@@ -109,7 +108,7 @@ func (widget *SessionsWidget) ResetSelector() {
 }
 
 func (widget *SessionsWidget) Refresh() {
-	headers := []string{"Alias", "Hostname", "Connected", "Relaying", ""}
+	headers := []string{"Alias", "Hostname", "Connected", "Relaying", "First Seen", "Last Seen", ""}
 	for colNo, header := range headers {
 		header := fmt.Sprintf("[::b]%s", strings.ToUpper(header))
 		widget.SetCell(0, colNo, tview.NewTableCell(header).SetExpansion(1).SetSelectable(false)).SetFixed(1, 0)
@@ -127,7 +126,9 @@ func (widget *SessionsWidget) Refresh() {
 		widget.SetCell(rowId, 1, elem.Hostname())
 		widget.SetCell(rowId, 2, elem.IsConnected())
 		widget.SetCell(rowId, 3, elem.IsRelaying())
-		widget.SetCell(rowId, 4, elem.Status().SetSelectable(false).SetAlign(tview.AlignCenter))
+		widget.SetCell(rowId, 4, elem.FirstSeen())
+		widget.SetCell(rowId, 5, elem.LastSeen())
+		widget.SetCell(rowId, 6, elem.Status().SetSelectable(false).SetAlign(tview.AlignCenter))
 
 		rowId++
 	}
@@ -182,6 +183,16 @@ func (elem *SessionsWidgetElem) IsConnected() *tview.TableCell {
 
 func (elem *SessionsWidgetElem) IsRelaying() *tview.TableCell {
 	val := utils.HumanBool(elem.Session.IsRelaying)
+	return tview.NewTableCell(val).SetBackgroundColor(elem.bgcolor)
+}
+
+func (elem *SessionsWidgetElem) FirstSeen() *tview.TableCell {
+	val := utils.HumanTime(elem.Session.FirstSeen.AsTime())
+	return tview.NewTableCell(val).SetBackgroundColor(elem.bgcolor)
+}
+
+func (elem *SessionsWidgetElem) LastSeen() *tview.TableCell {
+	val := utils.HumanTimeSince(elem.Session.FirstSeen.AsTime())
 	return tview.NewTableCell(val).SetBackgroundColor(elem.bgcolor)
 }
 

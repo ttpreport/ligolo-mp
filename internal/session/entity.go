@@ -8,12 +8,14 @@ import (
 	"log/slog"
 	"net/netip"
 	"sort"
+	"time"
 
 	"github.com/hashicorp/yamux"
 	"github.com/ttpreport/ligolo-mp/internal/network"
 	"github.com/ttpreport/ligolo-mp/internal/protocol"
 	"github.com/ttpreport/ligolo-mp/pkg/memstore"
 	pb "github.com/ttpreport/ligolo-mp/protobuf"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Session struct {
@@ -26,6 +28,8 @@ type Session struct {
 	Hostname    string
 	Interfaces  *memstore.Syncslice[protocol.NetInterface]
 	Multiplex   *yamux.Session `json:"-"`
+	FirstSeen   time.Time
+	LastSeen    time.Time
 }
 
 type Redirector struct {
@@ -66,6 +70,18 @@ func (sess *Session) GetName() string {
 	}
 
 	return sess.Hostname
+}
+
+func (sess *Session) GetFirstSeen() time.Time {
+	return sess.FirstSeen
+}
+
+func (sess *Session) GetLastSeen() time.Time {
+	if sess.IsConnected {
+		return time.Now()
+	}
+
+	return sess.LastSeen
 }
 
 func (sess *Session) RouteOverlaps(cidr string) (string, bool) {
@@ -167,6 +183,10 @@ func (sess *Session) Connect(multiplex *yamux.Session) error {
 	sess.ID = sess.Hash()
 	sess.IsConnected = true
 
+	if sess.FirstSeen.IsZero() {
+		sess.FirstSeen = time.Now()
+	}
+
 	return nil
 }
 
@@ -176,6 +196,7 @@ func (sess *Session) Disconnect() error {
 	}
 
 	sess.IsConnected = false
+	sess.LastSeen = time.Now()
 
 	return sess.remoteDestroySession()
 }
@@ -414,5 +435,7 @@ func (sess *Session) Proto() *pb.Session {
 		Tun:         sess.Tun.Proto(),
 		Hostname:    sess.Hostname,
 		Interfaces:  ifaces,
+		FirstSeen:   timestamppb.New(sess.GetFirstSeen()),
+		LastSeen:    timestamppb.New(sess.GetLastSeen()),
 	}
 }

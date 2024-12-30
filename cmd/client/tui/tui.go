@@ -63,17 +63,31 @@ func NewApp(operService *operator.OperatorService) *App {
 
 	app.SwitchToPage(app.credentials)
 
-	go app.refresh()
+	go app.autoRedraw()
+	go app.autoRefresh()
 
 	return app
 }
 
-func (app *App) refresh() {
+func (app *App) autoRedraw() {
 	tick := time.NewTicker(500 * time.Millisecond)
 	for {
 		select {
 		case <-tick.C:
 			app.Draw()
+		}
+	}
+}
+
+func (app *App) autoRefresh() {
+	ticker := time.NewTicker(1 * time.Minute)
+	for {
+		select {
+		case <-ticker.C:
+			if app.operator.IsConnected() {
+				app.dashboard.RefreshData()
+				app.admin.RefreshData()
+			}
 		}
 	}
 }
