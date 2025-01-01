@@ -73,6 +73,7 @@ done
 # Signature verification
 echo "Verifying signatures ..."
 sha256sum --ignore-missing -c ligolo-mp_checksums.txt || (echo "Signature mismatch! Aborting..." && exit 2)
+echo
 
 if test -f "/root/$SERVER_BINARY"; then
     echo "Moving the server executable to /root/ligolo-mp-server..."
@@ -80,6 +81,7 @@ if test -f "/root/$SERVER_BINARY"; then
 
     echo "Setting permissions for the server executable..."
     chmod 755 /root/ligolo-mp-server
+    echo
 else
     echo "$SERVER_BINARY not found! Aborting..." 
     exit 3
@@ -90,13 +92,14 @@ if test -f "/root/$CLIENT_BINARY"; then
     mv "/root/$CLIENT_BINARY" /usr/local/bin/ligolo-mp-client
 
     echo "Setting permissions for the client executable..."
-    chmod 755 "/root/$CLIENT_BINARY"
+    chmod 755 /usr/local/bin/ligolo-mp-client
 
     echo "Creating a symbolic link for client at /usr/local/bin/ligolo-mp..."
     ln -sf /usr/local/bin/ligolo-mp-client /usr/local/bin/ligolo-mp
 
     echo "Setting permissions for the symbolic link /usr/local/bin/ligolo-mp..."
     chmod 755 /usr/local/bin/ligolo-mp
+    echo
 else
     echo "$CLIENT_BINARY not found! Aborting..." 
     exit 3
@@ -104,14 +107,17 @@ fi
 
 echo "Stopping Ligolo-mp service..."
 systemctl stop ligolo-mp
+echo
 
 echo "Unpacking server files..."
 /root/ligolo-mp-server -unpack
+echo
 
 echo "Initializing operators..."
-echo -n "IP to reach the server [e.g. 10.10.20.25]: "
+echo -n "IP to reach the server [e.g. 127.0.0.1]: "
 read SERVER_ADDR
-/root/ligolo-mp-server -init-operators -operator-addr $SERVER_ADDR:58008
+/root/ligolo-mp-server -init-operators -operator-addr "$SERVER_ADDR:58008"
+echo
 
 # systemd
 echo "Configuring systemd service ..."
@@ -134,6 +140,8 @@ EOF
 
 chown root:root /etc/systemd/system/ligolo-mp.service
 chmod 600 /etc/systemd/system/ligolo-mp.service
+echo
 
 echo "Starting the Ligolo-mp service..."
 systemctl start ligolo-mp
+echo
