@@ -21,10 +21,12 @@ import (
 func main() {
 	var daemonFlag = flag.Bool("daemon", false, "enable daemon mode")
 	var verboseFlag = flag.Bool("v", false, "enable verbose mode")
-	var listenInterface = flag.String("agentaddr", "0.0.0.0:11601", "listening address")
-	var maxInflight = flag.Int("maxinflight", 4096, "max inflight TCP connections")
-	var maxConnectionHandler = flag.Int("maxconnection", 4096, "per tunnel connection pool size")
-	var operatorAddr = flag.String("operatoraddr", "0.0.0.0:58008", "Address for operators connections")
+	var listenInterface = flag.String("agent-addr", "0.0.0.0:11601", "listening address")
+	var maxInflight = flag.Int("max-inflight", 4096, "max inflight TCP connections")
+	var maxConnectionHandler = flag.Int("max-connection", 4096, "per tunnel connection pool size")
+	var operatorAddr = flag.String("operator-addr", "0.0.0.0:58008", "Address for operators connections")
+	var unpack = flag.Bool("unpack", false, "Unpack server files")
+	var initOperators = flag.Bool("init-operators", false, "Initialize operators (creates a first admin if none exists)")
 
 	flag.Parse()
 
@@ -80,19 +82,51 @@ func main() {
 	operService := operator.NewOperatorService(cfg, operRepo, certService)
 	assetsService := assets.NewAssetsService(cfg)
 
+	if *initOperators {
+		operators, err := operService.AllOperators()
+		if err != nil {
+			panic(err)
+		}
+
+		if len(operators) < 1 {
+			admin, err := operService.NewOperator("admin", true, *operatorAddr)
+			if err != nil {
+				panic(err)
+			}
+
+			cwd, err := os.Getwd()
+			if err != nil {
+				panic(err)
+			}
+
+			path, err := admin.ToFile(cwd)
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Printf("Admin's config saved to: %s", path)
+
+			return
+		}
+
+		fmt.Printf("First admin account already initialized")
+
+		return
+	}
+
+	if *unpack {
+		if err := assetsService.Unpack(); err != nil {
+			panic(err)
+		}
+
+		return
+	}
+
 	if err := certService.Init(); err != nil {
 		panic(err)
 	}
 
-	if err := operService.Init(); err != nil {
-		panic(err)
-	}
-
 	if err := sessService.CleanUp(); err != nil {
-		panic(err)
-	}
-
-	if err := assetsService.Init(); err != nil {
 		panic(err)
 	}
 

@@ -3,7 +3,6 @@ package operator
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/ttpreport/ligolo-mp/internal/certificate"
@@ -22,28 +21,6 @@ func NewOperatorService(cfg *config.Config, repo *OperatorRepository, certServic
 		repo:        repo,
 		certService: certService,
 	}
-}
-
-func (service *OperatorService) Init() error {
-	operators, err := service.repo.GetAll()
-	if err != nil {
-		return err
-	}
-
-	if len(operators) < 1 {
-		admin, err := service.NewOperator("admin", true, service.config.OperatorAddr)
-		if err != nil {
-			return err
-		}
-
-		path, err := admin.ToFile(service.config.GetRootAppDir())
-		if err != nil {
-			return err
-		}
-		slog.Info("Administrative config saved", slog.Any("path", path))
-	}
-
-	return nil
 }
 
 func (service *OperatorService) NewOperator(name string, isAdmin bool, server string) (*Operator, error) {

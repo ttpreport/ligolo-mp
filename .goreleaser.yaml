@@ -75,7 +75,5 @@ release:
   disable: false
 
 checksum:
-  name_template: "{{ .ArtifactName }}.sig"
+  name_template: "{{ .ProjectName }}_checksums.txt"
   algorithm: sha256
-  split: true
-  disable: false

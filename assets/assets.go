@@ -41,7 +41,7 @@ func NewAssetsService(cfg *config.Config) *AssetsService {
 	}
 }
 
-func (assets *AssetsService) Init() error {
+func (assets *AssetsService) Unpack() error {
 	a, err := FS.ReadFile("artifacts/go.zip")
 	if err != nil {
 		return err

@@ -49,3 +49,7 @@ protobuf:
 .PHONY: clean
 clean:
 	rm -rf assets/artifacts/agent.zip assets/artifacts/go.zip
+
+.PHONY: install
+install:
+	./install.sh
