@@ -82,6 +82,10 @@ func main() {
 	operService := operator.NewOperatorService(cfg, operRepo, certService)
 	assetsService := assets.NewAssetsService(cfg)
 
+	if err := certService.Init(); err != nil {
+		panic(err)
+	}
+
 	if *initOperators {
 		operators, err := operService.AllOperators()
 		if err != nil {
@@ -120,10 +124,6 @@ func main() {
 		}
 
 		return
-	}
-
-	if err := certService.Init(); err != nil {
-		panic(err)
 	}
 
 	if err := sessService.CleanUp(); err != nil {
