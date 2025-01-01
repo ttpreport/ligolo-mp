@@ -102,13 +102,16 @@ else
     exit 3
 fi
 
+echo "Stopping Ligolo-mp service..."
+systemctl stop ligolo-mp
+
 echo "Unpacking server files..."
 /root/ligolo-mp-server -unpack
 
 echo "Initializing operators..."
-echo "IP to reach the server: "
+echo -n "IP to reach the server [e.g. 10.10.20.25]: "
 read SERVER_ADDR
-/root/ligolo-mp-server -init-operators -operator-addr $SERVER_ADDR
+/root/ligolo-mp-server -init-operators -operator-addr $SERVER_ADDR:58008
 
 # systemd
 echo "Configuring systemd service ..."
