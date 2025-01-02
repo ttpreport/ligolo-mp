@@ -57,8 +57,8 @@ func NewDashboardPage() *DashboardPage {
 
 	firstRow := tview.NewFlex()
 	firstRow.SetDirection(tview.FlexColumn)
-	firstRow.AddItem(dash.sessions, 0, 50, true)
-	firstRow.AddItem(dash.interfaces, 0, 50, false)
+	firstRow.AddItem(dash.sessions, 0, 75, true)
+	firstRow.AddItem(dash.interfaces, 0, 25, false)
 
 	secondRow := tview.NewFlex()
 	secondRow.SetDirection(tview.FlexColumn)
@@ -142,6 +142,7 @@ func (dash *DashboardPage) initSessionsWidget() {
 				dash.DoWithLoader("Adding route...", func() {
 					err := dash.sessionAddRouteFunc(sess, cidr, loopback)
 					if err != nil {
+						dash.RemovePage(route.GetID())
 						dash.ShowError(fmt.Sprintf("Could not add route: %s", err), cleanup)
 						return
 					}

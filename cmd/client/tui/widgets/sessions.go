@@ -192,7 +192,7 @@ func (elem *SessionsWidgetElem) FirstSeen() *tview.TableCell {
 }
 
 func (elem *SessionsWidgetElem) LastSeen() *tview.TableCell {
-	val := utils.HumanTimeSince(elem.Session.FirstSeen.AsTime())
+	val := utils.HumanTimeSince(elem.Session.LastSeen.AsTime())
 	return tview.NewTableCell(val).SetBackgroundColor(elem.bgcolor)
 }
 
