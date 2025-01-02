@@ -138,13 +138,15 @@ func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate 
 		}
 	}
 
-	u, err := url.Parse(proxyServer)
-	if err != nil {
-		return nil, fmt.Errorf("%s is invalid proxy: %s", proxyServer, err)
-	}
+	if proxyServer != "" {
+		u, err := url.Parse(proxyServer)
+		if err != nil {
+			return nil, fmt.Errorf("%s is invalid proxy: %s", proxyServer, err)
+		}
 
-	if !slices.Contains(assets.supportedProxySchemes, u.Scheme) {
-		return nil, fmt.Errorf("%s is not supported proxy scheme", u.Scheme)
+		if !slices.Contains(assets.supportedProxySchemes, u.Scheme) {
+			return nil, fmt.Errorf("%s is not supported proxy scheme", u.Scheme)
+		}
 	}
 
 	agentDir, err := assets.renderAgent(proxyServer, servers, CACert, AgentCert, AgentKey)
