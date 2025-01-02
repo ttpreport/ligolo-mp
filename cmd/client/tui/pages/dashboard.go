@@ -78,6 +78,7 @@ func NewDashboardPage() *DashboardPage {
 func (dash *DashboardPage) initSessionsWidget() {
 	dash.sessions.SetSelectionChangedFunc(func(sess *pb.Session) {
 		dash.sessions.SetSelectedSession(sess)
+		dash.interfaces.SetSelectedSession(sess)
 		dash.routes.SetSelectedSession(sess)
 		dash.redirectors.SetSelectedSession(sess)
 	})
@@ -205,6 +206,7 @@ func (dash *DashboardPage) initSessionsWidget() {
 func (dash *DashboardPage) initRoutesWidget() {
 	dash.routes.SetSelectionChangedFunc(func(elem *widgets.RoutesWidgetElem) {
 		dash.sessions.SetSelectedSession(elem.Session)
+		dash.interfaces.SetSelectedSession(elem.Session)
 		dash.routes.SetSelectedSession(elem.Session)
 		dash.redirectors.SetSelectedSession(elem.Session)
 	})
@@ -237,6 +239,7 @@ func (dash *DashboardPage) initRoutesWidget() {
 func (dash *DashboardPage) initRedirectorsWidget() {
 	dash.redirectors.SetSelectionChangedFunc(func(elem *widgets.RedirectorsWidgetElem) {
 		dash.sessions.SetSelectedSession(elem.Session)
+		dash.interfaces.SetSelectedSession(elem.Session)
 		dash.routes.SetSelectedSession(elem.Session)
 		dash.redirectors.SetSelectedSession(elem.Session)
 	})

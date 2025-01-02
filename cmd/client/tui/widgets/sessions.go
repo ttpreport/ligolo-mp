@@ -64,7 +64,7 @@ func (widget *SessionsWidget) FetchRow(sess *pb.Session) int {
 		}
 	}
 
-	return 1
+	return 0
 }
 
 func (widget *SessionsWidget) SetSelectionChangedFunc(f func(*pb.Session)) {
@@ -94,6 +94,7 @@ func (widget *SessionsWidget) SetData(data []*pb.Session) {
 	}
 
 	widget.Refresh()
+	widget.ResetSelector()
 }
 
 func (widget *SessionsWidget) ResetSelector() {
@@ -103,7 +104,9 @@ func (widget *SessionsWidget) ResetSelector() {
 			row = widget.FetchRow(widget.selectedSession)
 		}
 
-		widget.Select(row, 0)
+		if row > 0 {
+			widget.Select(row, 0)
+		}
 	}
 }
 

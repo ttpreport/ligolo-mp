@@ -80,7 +80,7 @@ func (app *App) autoRedraw() {
 }
 
 func (app *App) autoRefresh() {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 	for {
 		select {
 		case <-ticker.C:

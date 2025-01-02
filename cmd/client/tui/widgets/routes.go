@@ -63,7 +63,7 @@ func (widget *RoutesWidget) FetchRow(sess *pb.Session) int {
 		}
 	}
 
-	return 1
+	return 0
 }
 
 func (widget *RoutesWidget) SetSelectionChangedFunc(f func(*RoutesWidgetElem)) {
@@ -96,6 +96,7 @@ func (widget *RoutesWidget) SetData(data []*pb.Session) {
 	}
 
 	widget.Refresh()
+	widget.ResetSelector()
 }
 
 func (widget *RoutesWidget) ResetSelector() {
@@ -105,7 +106,9 @@ func (widget *RoutesWidget) ResetSelector() {
 			row = widget.FetchRow(widget.selectedSession)
 		}
 
-		widget.Select(row, 0)
+		if row > 0 {
+			widget.Select(row, 0)
+		}
 	}
 }
 

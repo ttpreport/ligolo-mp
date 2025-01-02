@@ -64,6 +64,7 @@ func (widget *RedirectorsWidget) SetData(data []*pb.Session) {
 	}
 
 	widget.Refresh()
+	widget.ResetSelector()
 }
 
 func (widget *RedirectorsWidget) SetSelectedSession(sess *pb.Session) {
@@ -87,7 +88,7 @@ func (widget *RedirectorsWidget) FetchRow(sess *pb.Session) int {
 		}
 	}
 
-	return 1
+	return 0
 }
 
 func (widget *RedirectorsWidget) SetSelectionChangedFunc(f func(*RedirectorsWidgetElem)) {
@@ -115,7 +116,9 @@ func (widget *RedirectorsWidget) ResetSelector() {
 			row = widget.FetchRow(widget.selectedSession)
 		}
 
-		widget.Select(row, 0)
+		if row > 0 {
+			widget.Select(row, 0)
+		}
 	}
 }
 

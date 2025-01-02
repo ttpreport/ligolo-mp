@@ -11,7 +11,8 @@ import (
 
 type InterfacesWidget struct {
 	*tview.Table
-	data []*pb.Interface
+	data            []*pb.Interface
+	selectedSession *pb.Session
 }
 
 func NewInterfacesWidget() *InterfacesWidget {
@@ -50,6 +51,12 @@ func (widget *InterfacesWidget) SetData(data []*pb.Session) {
 	widget.Refresh()
 }
 
+func (widget *InterfacesWidget) SetSelectedSession(sess *pb.Session) {
+	widget.Clear()
+	widget.selectedSession = sess
+	widget.Refresh()
+}
+
 func (widget *InterfacesWidget) ResetSelector() {
 	if len(widget.data) > 0 {
 		widget.Select(1, 0) // forcing selection for highlighting to work immediately
@@ -63,13 +70,15 @@ func (widget *InterfacesWidget) Refresh() {
 		widget.SetCell(0, i, tview.NewTableCell(header).SetExpansion(1).SetSelectable(false)).SetFixed(1, 0)
 	}
 
-	rowId := 1
-	for _, elem := range widget.data {
-		for _, IP := range elem.IPs {
-			widget.SetCell(rowId, 0, tview.NewTableCell(elem.Name))
-			widget.SetCell(rowId, 1, tview.NewTableCell(IP))
+	if widget.selectedSession != nil {
+		rowId := 1
+		for _, elem := range widget.selectedSession.Interfaces {
+			for _, IP := range elem.IPs {
+				widget.SetCell(rowId, 0, tview.NewTableCell(elem.Name))
+				widget.SetCell(rowId, 1, tview.NewTableCell(IP))
 
-			rowId++
+				rowId++
+			}
 		}
 	}
 }
