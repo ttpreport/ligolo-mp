@@ -6,6 +6,9 @@ This thing is based on amazing work by [nicocha30](https://github.com/nicocha30)
 
 [![GPLv3](https://img.shields.io/badge/License-GPLv3-brightgreen.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
+> [!WARNING]
+> Version 2.0 is almost complete and will introduce automated TUN management and a more user-friendly UI, but please use it with care: it's still in beta and is undergoing battle-testing - it's not production-ready yet.
+
 ## Table of Contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
