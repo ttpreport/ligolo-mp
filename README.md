@@ -13,6 +13,8 @@ This thing is based on amazing work by [nicocha30](https://github.com/nicocha30)
 
 **Ligolo-mp** is a more specialized version of Ligolo-ng, with client-server architecture, enabling pentesters to play with multiple concurrent tunnels collaboratively. Also, with a sprinkle of less important bells and whistles.
 
+![Ligolo-mp Dashboard](doc/dashboard.png)
+
 ## Features
 
 Everything that you love about Ligolo-ng and:
@@ -20,6 +22,7 @@ Everything that you love about Ligolo-ng and:
 - Multiplayer
 - Multiple concurrent relays
 - Automatic TUN management
+- SOCKS and HTTP proxy support
 - Routing to the loopback of target machine (no more port forwarding)
 - Listeners are now independent redirectors
 - Dynamic mTLS-enabled agent binaries generation with obfuscation option
