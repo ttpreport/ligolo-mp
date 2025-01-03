@@ -84,7 +84,7 @@ func (app *App) autoRefresh() {
 	for {
 		select {
 		case <-ticker.C:
-			if app.operator.IsConnected() {
+			if app.operator != nil && app.operator.IsConnected() {
 				app.dashboard.RefreshData()
 				app.admin.RefreshData()
 			}
