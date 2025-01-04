@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LigoloClient interface {
+	GetMetadata(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetMetadataResp, error)
 	Join(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Ligolo_JoinClient, error)
 	GetSessions(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetSessionsResp, error)
 	RenameSession(ctx context.Context, in *RenameSessionReq, opts ...grpc.CallOption) (*Empty, error)
@@ -49,6 +50,15 @@ type ligoloClient struct {
 
 func NewLigoloClient(cc grpc.ClientConnInterface) LigoloClient {
 	return &ligoloClient{cc}
+}
+
+func (c *ligoloClient) GetMetadata(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetMetadataResp, error) {
+	out := new(GetMetadataResp)
+	err := c.cc.Invoke(ctx, "/ligolo.Ligolo/GetMetadata", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *ligoloClient) Join(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Ligolo_JoinClient, error) {
@@ -249,6 +259,7 @@ func (c *ligoloClient) GenerateAgent(ctx context.Context, in *GenerateAgentReq, 
 // All implementations must embed UnimplementedLigoloServer
 // for forward compatibility
 type LigoloServer interface {
+	GetMetadata(context.Context, *Empty) (*GetMetadataResp, error)
 	Join(*Empty, Ligolo_JoinServer) error
 	GetSessions(context.Context, *Empty) (*GetSessionsResp, error)
 	RenameSession(context.Context, *RenameSessionReq) (*Empty, error)
@@ -275,6 +286,9 @@ type LigoloServer interface {
 type UnimplementedLigoloServer struct {
 }
 
+func (UnimplementedLigoloServer) GetMetadata(context.Context, *Empty) (*GetMetadataResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMetadata not implemented")
+}
 func (UnimplementedLigoloServer) Join(*Empty, Ligolo_JoinServer) error {
 	return status.Errorf(codes.Unimplemented, "method Join not implemented")
 }
@@ -343,6 +357,24 @@ type UnsafeLigoloServer interface {
 
 func RegisterLigoloServer(s grpc.ServiceRegistrar, srv LigoloServer) {
 	s.RegisterService(&Ligolo_ServiceDesc, srv)
+}
+
+func _Ligolo_GetMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LigoloServer).GetMetadata(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ligolo.Ligolo/GetMetadata",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LigoloServer).GetMetadata(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Ligolo_Join_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -697,6 +729,10 @@ var Ligolo_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "ligolo.Ligolo",
 	HandlerType: (*LigoloServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetMetadata",
+			Handler:    _Ligolo_GetMetadata_Handler,
+		},
 		{
 			MethodName: "GetSessions",
 			Handler:    _Ligolo_GetSessions_Handler,

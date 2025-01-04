@@ -5,12 +5,15 @@ import (
 	"strings"
 
 	"github.com/rivo/tview"
-	"github.com/ttpreport/ligolo-mp/internal/operator"
+
+	pb "github.com/ttpreport/ligolo-mp/protobuf"
 )
 
 type ServerWidget struct {
 	*tview.TextView
-	data *operator.Operator
+	operator     *pb.Operator
+	serverConfig *pb.Config
+	fetchConfig  func()
 }
 
 func NewServerWidget() *ServerWidget {
@@ -25,20 +28,21 @@ func NewServerWidget() *ServerWidget {
 	return widget
 }
 
-func (widget *ServerWidget) SetData(data *operator.Operator) {
+func (widget *ServerWidget) SetData(metadata *pb.GetMetadataResp) {
 	widget.Clear()
-	widget.data = data
+	widget.operator = metadata.Operator
+	widget.serverConfig = metadata.Config
 	widget.Refresh()
 }
 
 func (widget *ServerWidget) Refresh() {
-	if widget.data != nil {
-		access := "regular"
-		if widget.data.IsAdmin {
-			access = "administrative"
+	if widget.operator != nil {
+		access := "operator"
+		if widget.operator.IsAdmin {
+			access = "admin"
 		}
 
-		text := fmt.Sprintf("You are connected to %s as %s who is %s user", widget.data.Server, widget.data.Name, access)
+		text := fmt.Sprintf("Operator: %s@%s (%s) | Agent server: %s", widget.operator.Name, widget.operator.Server, access, widget.serverConfig.AgentServer)
 		widget.SetText(text)
 	}
 }

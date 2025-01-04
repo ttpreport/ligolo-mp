@@ -8,6 +8,7 @@ import "google/protobuf/timestamp.proto";
 
 service Ligolo {
   rpc Join(Empty) returns (stream Event) {}
+  rpc GetMetadata(Empty) returns (GetMetadataResp) {}
 
   rpc GetSessions (Empty) returns (GetSessionsResp) {}
   rpc RenameSession (RenameSessionReq) returns (Empty) {}
@@ -101,6 +102,11 @@ message Operator {
 message OperatorCredentials {
   Cert Cert = 1;
   bytes CA = 2;
+}
+
+message Config {
+  string OperatorServer = 1;
+  string AgentServer = 2;
 }
 
 // [/Objects]
@@ -207,6 +213,11 @@ message PromoteOperatorReq {
 
 message DemoteOperatorReq {
   string Name = 1;
+}
+
+message GetMetadataResp{
+  Operator Operator = 1;
+  Config Config = 2;
 }
 
 // [/Methods]

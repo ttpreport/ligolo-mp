@@ -464,6 +464,16 @@ func (s *ligoloServer) RegenCert(ctx context.Context, in *pb.RegenCertReq) (*pb.
 	return &pb.Empty{}, err
 }
 
+func (s *ligoloServer) GetMetadata(ctx context.Context, in *pb.Empty) (*pb.GetMetadataResp, error) {
+	slog.Debug("Received request to get metadata", slog.Any("in", in))
+	oper := ctx.Value("operator").(*operator.Operator)
+
+	return &pb.GetMetadataResp{
+		Operator: oper.Proto(),
+		Config:   s.ligoloConfig.Proto(),
+	}, nil
+}
+
 func (s *ligoloServer) operatorFromContext(ctx context.Context) (*operator.Operator, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {

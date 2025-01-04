@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+
+	pb "github.com/ttpreport/ligolo-mp/protobuf"
 )
 
 type Config struct {
@@ -25,4 +27,11 @@ func (cfg *Config) GetRootAppDir() string {
 		}
 	}
 	return dir
+}
+
+func (cfg *Config) Proto() *pb.Config {
+	return &pb.Config{
+		OperatorServer: cfg.OperatorAddr,
+		AgentServer:    cfg.ListenInterface,
+	}
 }

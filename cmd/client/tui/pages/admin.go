@@ -20,7 +20,9 @@ type AdminPage struct {
 	operators *widgets.OperatorsWidget
 	certs     *widgets.CertificatesWidget
 
-	setFocus        func(tview.Primitive)
+	setFocus func(tview.Primitive)
+
+	getMetadata     func() (*pb.GetMetadataResp, error)
 	getOperators    func() ([]*pb.Operator, error)
 	getCertificates func() ([]*pb.Cert, error)
 	switchback      func()
@@ -247,19 +249,32 @@ func (admin *AdminPage) RefreshData() {
 	opers, err := admin.getOperators()
 	if err != nil {
 		admin.ShowError(fmt.Sprintf("Could not refresh operators: %s", err), nil)
+		return
 	}
 	admin.operators.SetData(opers)
 
 	certs, err := admin.getCertificates()
 	if err != nil {
 		admin.ShowError(fmt.Sprintf("Could not refresh certs: %s", err), nil)
+		return
 	}
 	admin.certs.SetData(certs)
+
+	metadata, err := admin.getMetadata()
+	if err != nil {
+		admin.ShowError(fmt.Sprintf("Could not fetch metadata: %s", err), nil)
+		return
+	}
+
+	admin.server.SetData(metadata)
+}
+
+func (admin *AdminPage) SetMetadataFunc(f func() (*pb.GetMetadataResp, error)) {
+	admin.getMetadata = f
 }
 
 func (admin *AdminPage) SetOperator(oper *operator.Operator) {
 	admin.operator = oper
-	admin.server.SetData(oper)
 }
 
 func (admin *AdminPage) SetExportOperatorFunc(f func(string, string) (string, error)) {

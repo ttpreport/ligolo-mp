@@ -14,7 +14,6 @@ import (
 type SessionsWidget struct {
 	tview.Table
 	data            []*SessionsWidgetElem
-	getData         func() []*pb.Session
 	selectedFunc    func(*pb.Session)
 	selectedSession *pb.Session
 }

@@ -105,7 +105,7 @@ func (app *App) initCredentials() {
 		return app.operService.AllOperators()
 	})
 
-	app.credentials.SetSelectedFunc(func(oper *operator.Operator) error {
+	app.credentials.SetConnectFunc(func(oper *operator.Operator) error {
 		if oper == nil {
 			return nil
 		}
@@ -269,6 +269,18 @@ func (app *App) initDashboard() {
 		})
 		return err
 	})
+
+	app.dashboard.SetMetadataFunc(func() (*pb.GetMetadataResp, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+
+		r, err := app.operator.Client().GetMetadata(ctx, &pb.Empty{})
+		if err != nil {
+			return nil, err
+		}
+
+		return r, nil
+	})
 }
 
 func (app *App) initAdmin() {
@@ -388,6 +400,18 @@ func (app *App) initAdmin() {
 		app.operator = nil
 
 		app.SwitchToPage(app.credentials)
+	})
+
+	app.admin.SetMetadataFunc(func() (*pb.GetMetadataResp, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+
+		r, err := app.operator.Client().GetMetadata(ctx, &pb.Empty{})
+		if err != nil {
+			return nil, err
+		}
+
+		return r, nil
 	})
 
 	app.pages.AddPage(app.credentials.GetID(), app.credentials, true, false)

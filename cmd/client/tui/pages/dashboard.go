@@ -24,6 +24,7 @@ type DashboardPage struct {
 	redirectors *widgets.RedirectorsWidget
 
 	getData                     func() ([]*pb.Session, error)
+	getMetadata                 func() (*pb.GetMetadataResp, error)
 	adminFunc                   func()
 	disconnectFunc              func()
 	generateFunc                func(string, *pb.GenerateAgentReq) (string, error)
@@ -336,7 +337,6 @@ func (dash *DashboardPage) GetID() string {
 
 func (dash *DashboardPage) SetOperator(oper *operator.Operator) {
 	dash.operator = oper
-	dash.server.SetData(oper)
 }
 
 func (dash *DashboardPage) SetAdminFunc(f func()) {
@@ -345,6 +345,10 @@ func (dash *DashboardPage) SetAdminFunc(f func()) {
 
 func (dash *DashboardPage) SetDataFunc(f func() ([]*pb.Session, error)) {
 	dash.getData = f
+}
+
+func (dash *DashboardPage) SetMetadataFunc(f func() (*pb.GetMetadataResp, error)) {
+	dash.getMetadata = f
 }
 
 func (dash *DashboardPage) SetDisconnectFunc(f func()) {
@@ -390,7 +394,7 @@ func (dash *DashboardPage) SetSessionKillFunc(f func(*pb.Session) error) {
 func (dash *DashboardPage) RefreshData() {
 	data, err := dash.getData()
 	if err != nil {
-		dash.ShowError(fmt.Sprintf("Could not refresh sessions: %s", err), nil)
+		dash.ShowError(fmt.Sprintf("Could not fetch data: %s", err), nil)
 		return
 	}
 
@@ -398,6 +402,14 @@ func (dash *DashboardPage) RefreshData() {
 	dash.interfaces.SetData(data)
 	dash.routes.SetData(data)
 	dash.redirectors.SetData(data)
+
+	metadata, err := dash.getMetadata()
+	if err != nil {
+		dash.ShowError(fmt.Sprintf("Could not fetch metadata: %s", err), nil)
+		return
+	}
+
+	dash.server.SetData(metadata)
 }
 
 func (dash *DashboardPage) GetNavBar() []widgets.NavBarElem {

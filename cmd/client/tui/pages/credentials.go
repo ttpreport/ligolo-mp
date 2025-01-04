@@ -17,11 +17,14 @@ import (
 type CredentialsPage struct {
 	tview.Pages
 
-	table          *tview.Table
-	getDataFunc    func() ([]*operator.Operator, error)
-	newCredFunc    func(path string) error
-	deleteCredFunc func(*operator.Operator) error
-	data           []*operator.Operator
+	table *tview.Table
+
+	data []*operator.Operator
+
+	getData    func() ([]*operator.Operator, error)
+	newCred    func(path string) error
+	deleteCred func(*operator.Operator) error
+	connect    func(*operator.Operator) error
 }
 
 func NewCredentialsPage() *CredentialsPage {
@@ -37,6 +40,8 @@ func NewCredentialsPage() *CredentialsPage {
 	creds.table.SetTitleColor(style.FgColor)
 	creds.table.SetBorder(true)
 
+	creds.initCredentials()
+
 	creds.AddAndSwitchToPage("table", creds.table, true)
 
 	return creds
@@ -49,12 +54,12 @@ func (creds *CredentialsPage) InputHandler() func(event *tcell.EventKey, setFocu
 		if creds.table.HasFocus() {
 			switch key {
 			case tcell.KeyCtrlN:
-				if creds.newCredFunc != nil {
+				if creds.newCred != nil {
 					filepicker := forms.NewFilepickerForm()
 					filepicker.SetSelectFunc(func(path string) {
-						err := creds.newCredFunc(path)
+						err := creds.newCred(path)
 						if err != nil {
-							creds.ShowError(fmt.Sprintf("Could not add credentials: %s", err))
+							creds.ShowError(fmt.Sprintf("Could not add credentials: %s", err), nil)
 							filepicker.Reset()
 							return
 						}
@@ -66,18 +71,6 @@ func (creds *CredentialsPage) InputHandler() func(event *tcell.EventKey, setFocu
 						creds.RemovePage(filepicker.GetID())
 					})
 					creds.AddPage(filepicker.GetID(), filepicker, true, true)
-				}
-			case tcell.KeyCtrlD:
-				if creds.deleteCredFunc != nil {
-					id, _ := creds.table.GetSelection()
-					oper := creds.GetElem(id - 1)
-
-					creds.DoWithConfirm("Are you sure?", func() {
-						err := creds.deleteCredFunc(oper)
-						if err != nil {
-							creds.ShowError(fmt.Sprintf("Could not delete credentials: %s", err))
-						}
-					})
 				}
 			default:
 				defaultHandler := creds.Pages.InputHandler()
@@ -111,28 +104,58 @@ func (creds *CredentialsPage) GetElem(id int) *operator.Operator {
 }
 
 func (creds *CredentialsPage) SetDataFunc(f func() ([]*operator.Operator, error)) {
-	creds.getDataFunc = f
+	creds.getData = f
 }
 
 func (creds *CredentialsPage) SetNewFunc(f func(path string) error) {
-	creds.newCredFunc = f
+	creds.newCred = f
 }
 
 func (creds *CredentialsPage) SetDeleteFunc(f func(*operator.Operator) error) {
-	creds.deleteCredFunc = f
+	creds.deleteCred = f
 }
 
-func (creds *CredentialsPage) SetSelectedFunc(f func(*operator.Operator) error) {
+func (creds *CredentialsPage) SetConnectFunc(f func(*operator.Operator) error) {
+	creds.connect = f
+}
+
+func (creds *CredentialsPage) initCredentials() {
 	creds.table.SetSelectedFunc(func(id, _ int) {
 		oper := creds.GetElem(id - 1)
 
 		if oper != nil {
-			creds.DoWithLoader("Connecting...", func() {
-				err := f(oper)
-				if err != nil {
-					creds.ShowError(fmt.Sprintf("Could not connect: %s", err))
-				}
-			})
+			menu := modals.NewMenuModal(fmt.Sprintf("Credentials — %s", oper.Name))
+			cleanup := func() {
+				creds.RemovePage(menu.GetID())
+			}
+			menu.SetCancelFunc(cleanup)
+
+			menu.AddItem(modals.NewMenuModalElem("Connect", func() {
+				creds.DoWithLoader("Connecting...", func() {
+					err := creds.connect(oper)
+					if err != nil {
+						creds.ShowError(fmt.Sprintf("Could not connect: %s", err), cleanup)
+					}
+
+					cleanup()
+				})
+			}))
+
+			menu.AddItem(modals.NewMenuModalElem("Remove", func() {
+				creds.DoWithLoader("Removing credentials...", func() {
+					creds.DoWithConfirm("Are you sure?", func() {
+						err := creds.deleteCred(oper)
+						if err != nil {
+							creds.ShowError(fmt.Sprintf("Could not remove credentials: %s", err), cleanup)
+							return
+						}
+					})
+
+					creds.ShowInfo("Credentials removed", cleanup)
+				})
+			}))
+
+			creds.AddPage(menu.GetID(), menu, true, true)
 		}
 	})
 }
@@ -146,13 +169,13 @@ func (creds *CredentialsPage) RefreshData() {
 		creds.table.SetCell(0, i, tview.NewTableCell(header).SetExpansion(1).SetSelectable(false)).SetFixed(1, 0)
 	}
 
-	if creds.getDataFunc == nil {
+	if creds.getData == nil {
 		return
 	}
 
-	data, err := creds.getDataFunc()
+	data, err := creds.getData()
 	if err != nil {
-		creds.ShowError(fmt.Sprintf("Could not load credentials: %s", err))
+		creds.ShowError(fmt.Sprintf("Could not load credentials: %s", err), nil)
 		return
 	}
 	creds.data = data
@@ -173,7 +196,6 @@ func (creds *CredentialsPage) GetNavBar() []widgets.NavBarElem {
 	return []widgets.NavBarElem{
 		widgets.NewNavBarElem(tcell.KeyEnter, "Select"),
 		widgets.NewNavBarElem(tcell.KeyCtrlN, "Add new"),
-		widgets.NewNavBarElem(tcell.KeyCtrlD, "Delete"),
 	}
 }
 
@@ -200,20 +222,28 @@ func (creds *CredentialsPage) DoWithLoader(text string, action func()) {
 	}()
 }
 
-func (creds *CredentialsPage) ShowError(text string) {
+func (creds *CredentialsPage) ShowError(text string, done func()) {
 	modal := modals.NewErrorModal()
 	modal.SetText(text)
 	modal.SetDoneFunc(func(_ int, _ string) {
 		creds.RemovePage(modal.GetID())
+
+		if done != nil {
+			done()
+		}
 	})
 	creds.AddPage(modal.GetID(), modal, true, true)
 }
 
-func (dash *CredentialsPage) ShowInfo(text string) {
+func (creds *CredentialsPage) ShowInfo(text string, done func()) {
 	modal := modals.NewInfoModal()
 	modal.SetText(text)
 	modal.SetDoneFunc(func(_ int, _ string) {
-		dash.RemovePage(modal.GetID())
+		creds.RemovePage(modal.GetID())
+
+		if done != nil {
+			done()
+		}
 	})
-	dash.AddPage(modal.GetID(), modal, true, true)
+	creds.AddPage(modal.GetID(), modal, true, true)
 }
