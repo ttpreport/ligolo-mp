@@ -2,7 +2,7 @@
 
 ![Ligolo-mp Logo](doc/logo.png)
 
-[![GPLv3](https://img.shields.io/badge/License-GPLv3-brightgreen.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Release](https://github.com/ttpreport/ligolo-mp/actions/workflows/release.yml/badge.svg)](https://github.com/ttpreport/ligolo-mp/actions/workflows/release.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/ttpreport/ligolo-mp)](https://goreportcard.com/report/github.com/ttpreport/ligolo-mp) [![GPLv3](https://img.shields.io/badge/License-GPLv3-brightgreen.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 > [!WARNING]
 > Version 2.0 is almost complete and will introduce automated TUN management and a more user-friendly UI, but please use it with care: it's still in beta and is undergoing battle-testing - it's not production-ready yet.
