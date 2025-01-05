@@ -255,6 +255,7 @@ func (s *ligoloServer) GenerateAgent(ctx context.Context, in *pb.GenerateAgentRe
 		string(CACert.Certificate),
 		string(cert.Certificate),
 		string(cert.Key),
+		in.IgnoreEnvProxy,
 	)
 	if err != nil {
 		return nil, err

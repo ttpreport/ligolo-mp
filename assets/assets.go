@@ -55,7 +55,7 @@ func (assets *AssetsService) Unpack() error {
 	return nil
 }
 
-func (assets *AssetsService) renderAgent(proxyServer string, servers string, CACert string, AgentCert string, AgentKey string) (string, error) {
+func (assets *AssetsService) renderAgent(proxyServer string, servers string, CACert string, AgentCert string, AgentKey string, IgnoreEnvProxy bool) (string, error) {
 	agentDir, err := assets.setupAgentDir()
 	if err != nil {
 		return "", err
@@ -80,18 +80,19 @@ func (assets *AssetsService) renderAgent(proxyServer string, servers string, CAC
 
 	var tpl bytes.Buffer
 	data := struct {
-		ProxyServer string
-		Servers     string
-		Retry       bool
-		CACert      string
-		AgentCert   string
-		AgentKey    string
+		ProxyServer    string
+		Servers        string
+		CACert         string
+		AgentCert      string
+		AgentKey       string
+		IgnoreEnvProxy bool
 	}{
-		ProxyServer: proxyServer,
-		Servers:     servers,
-		CACert:      CACert,
-		AgentCert:   AgentCert,
-		AgentKey:    AgentKey,
+		ProxyServer:    proxyServer,
+		Servers:        servers,
+		CACert:         CACert,
+		AgentCert:      AgentCert,
+		AgentKey:       AgentKey,
+		IgnoreEnvProxy: IgnoreEnvProxy,
 	}
 	if err := t.Execute(&tpl, data); err != nil {
 		return "", err
@@ -131,7 +132,7 @@ func (assets *AssetsService) setupAgentDir() (string, error) {
 	return "", nil
 }
 
-func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate bool, proxyServer string, servers string, CACert string, AgentCert string, AgentKey string) ([]byte, error) {
+func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate bool, proxyServer string, servers string, CACert string, AgentCert string, AgentKey string, IgnoreEnvProxy bool) ([]byte, error) {
 	for _, server := range strings.Split(servers, "\n") {
 		if _, _, err := net.SplitHostPort(server); err != nil {
 			return nil, fmt.Errorf("%s is invalid server: %s", server, err)
@@ -149,7 +150,7 @@ func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate 
 		}
 	}
 
-	agentDir, err := assets.renderAgent(proxyServer, servers, CACert, AgentCert, AgentKey)
+	agentDir, err := assets.renderAgent(proxyServer, servers, CACert, AgentCert, AgentKey, IgnoreEnvProxy)
 	if err != nil {
 		return nil, err
 	}

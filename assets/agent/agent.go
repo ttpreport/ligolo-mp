@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/user"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -46,6 +47,7 @@ func main() {
 	var AgentCert = []byte(`{{ .AgentCert }}`)
 	var AgentKey = []byte(`{{ .AgentKey }}`)
 	var CACert = []byte(`{{ .CACert }}`)
+	var ignoreEnvProxy, _ = strconv.ParseBool(`{{ .IgnoreEnvProxy }}`)
 
 	var conn net.Conn
 	redirectorMap = make(map[string]relay.Redirector)
@@ -92,12 +94,16 @@ func main() {
 				},
 			}
 
+			dialer := &net.Dialer{
+				Timeout: timeout,
+			}
+
 			if proxyServer != "" {
 				u, err := url.Parse(proxyServer)
 				if nil != err {
 					continue
 				}
-				d, err := proxy.FromURL(u, proxy.Direct)
+				d, err := proxy.FromURL(u, dialer)
 				if nil != err {
 					continue
 				}
@@ -107,9 +113,17 @@ func main() {
 					continue
 				}
 			} else {
-				conn, err = net.DialTimeout("tcp", server, 5*time.Second)
-				if err != nil {
-					continue
+				if ignoreEnvProxy {
+					conn, err = net.DialTimeout("tcp", server, timeout)
+					if err != nil {
+						continue
+					}
+				} else {
+					proxyDialer := proxy.FromEnvironmentUsing(dialer)
+					conn, err = proxyDialer.Dial("tcp", server)
+					if err != nil {
+						continue
+					}
 				}
 			}
 
