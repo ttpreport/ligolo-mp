@@ -41,11 +41,15 @@ func NewGenerateForm() *GenerateForm {
 		},
 	)
 
-	gen.form.AddInputField("Proxy address", "", 0, nil,
+	gen.form.AddInputField("Proxy", "", 0, nil,
 		func(text string) {
 			gen.req.ProxyServer = text
 		},
 	)
+
+	gen.form.AddCheckbox("Ignore env proxy", false, func(checked bool) {
+		gen.req.IgnoreEnvProxy = checked
+	})
 
 	gen.form.AddDropDown("OS", []string{"Windows", "Linux", "Darwin"}, 0, func(option string, _ int) {
 		gen.req.GOOS = strings.ToLower(option)
@@ -65,7 +69,7 @@ func NewGenerateForm() *GenerateForm {
 	gen.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(gen.form, 21, 1, true).
+			AddItem(gen.form, 23, 1, true).
 			AddItem(nil, 0, 1, false), 0, 3, true).
 		AddItem(nil, 0, 1, false)
 

@@ -85,7 +85,11 @@ func (dash *DashboardPage) initSessionsWidget() {
 	})
 
 	dash.sessions.SetSelectedFunc(func(sess *pb.Session) {
-		menu := modals.NewMenuModal("Session")
+		name := sess.Hostname
+		if sess.Alias != "" {
+			name = sess.Alias
+		}
+		menu := modals.NewMenuModal(fmt.Sprintf("Session — %s", name))
 		cleanup := func() {
 			dash.RemovePage(menu.GetID())
 			dash.setFocus(dash.sessions)
@@ -246,7 +250,7 @@ func (dash *DashboardPage) initRedirectorsWidget() {
 	})
 
 	dash.redirectors.SetSelectedFunc(func(elem *widgets.RedirectorsWidgetElem) {
-		menu := modals.NewMenuModal("Route")
+		menu := modals.NewMenuModal("Redirector")
 		cleanup := func() {
 			dash.RemovePage(menu.GetID())
 			dash.setFocus(dash.redirectors)

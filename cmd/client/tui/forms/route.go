@@ -21,7 +21,7 @@ func NewAddRouteForm() *AddRouteForm {
 		cancelBtn: tview.NewButton("Cancel"),
 	}
 
-	form.form.SetTitle("Rename session").SetTitleAlign(tview.AlignCenter)
+	form.form.SetTitle("Add route").SetTitleAlign(tview.AlignCenter)
 	form.form.SetBorder(true)
 	form.form.SetButtonsAlign(tview.AlignCenter)
 

@@ -67,7 +67,7 @@ func NewAdminPage() *AdminPage {
 
 func (admin *AdminPage) initOperatorsWidget() {
 	admin.operators.SetSelectedFunc(func(elem *widgets.OperatorsWidgetElem) {
-		menu := modals.NewMenuModal("Operator")
+		menu := modals.NewMenuModal(fmt.Sprintf("Operator — %s", elem.Operator.Name))
 		cleanup := func() {
 			admin.RemovePage(menu.GetID())
 			admin.setFocus(admin.operators)
@@ -141,7 +141,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 
 func (admin *AdminPage) initCertsWidget() {
 	admin.certs.SetSelectedFunc(func(elem *widgets.CertificatesWidgetElem) {
-		menu := modals.NewMenuModal("Certificate")
+		menu := modals.NewMenuModal(fmt.Sprintf("Certificate — %s", elem.Certificate.Name))
 		cleanup := func() {
 			admin.RemovePage(menu.GetID())
 			admin.setFocus(admin.certs)

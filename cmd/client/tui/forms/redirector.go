@@ -24,7 +24,7 @@ func NewAddRedirectorForm() *AddRedirectorForm {
 		cancelBtn: tview.NewButton("Cancel"),
 	}
 
-	page.form.SetTitle("Rename session").SetTitleAlign(tview.AlignCenter)
+	page.form.SetTitle("Add redirector").SetTitleAlign(tview.AlignCenter)
 	page.form.SetBorder(true)
 	page.form.SetButtonsAlign(tview.AlignCenter)
 
