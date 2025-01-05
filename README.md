@@ -13,7 +13,7 @@ This thing is based on amazing work by [nicocha30](https://github.com/nicocha30)
 
 **Ligolo-mp** is a more specialized version of Ligolo-ng, with client-server architecture, enabling pentesters to play with multiple concurrent tunnels collaboratively. Also, with a sprinkle of less important bells and whistles.
 
-![Ligolo-mp Dashboard](doc/dashboard.png)
+![Ligolo-mp Dashboard](doc/dashboard-1.png)
 
 ## Features
 
