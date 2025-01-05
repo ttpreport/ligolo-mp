@@ -50,7 +50,7 @@ func NewOperatorForm() *OperatorForm {
 	gen.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(gen.form, 15, 1, true).
+			AddItem(gen.form, 11, 1, true).
 			AddItem(nil, 0, 1, false), 0, 1, true).
 		AddItem(nil, 0, 1, false)
 
