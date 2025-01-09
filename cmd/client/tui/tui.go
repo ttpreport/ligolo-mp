@@ -69,6 +69,11 @@ func NewApp(operService *operator.OperatorService) *App {
 	return app
 }
 
+func (app *App) Reset() {
+	app.dashboard.Reset()
+	app.admin.Reset()
+}
+
 func (app *App) autoRedraw() {
 	tick := time.NewTicker(500 * time.Millisecond)
 	for {
@@ -170,7 +175,7 @@ func (app *App) initDashboard() {
 
 		app.operator = nil
 
-		app.SwitchToPage(app.credentials)
+		app.Reset()
 	})
 
 	app.dashboard.SetGenerateFunc(func(path string, req *pb.GenerateAgentReq) (string, error) {
@@ -399,7 +404,7 @@ func (app *App) initAdmin() {
 
 		app.operator = nil
 
-		app.SwitchToPage(app.credentials)
+		app.Reset()
 	})
 
 	app.admin.SetMetadataFunc(func() (*pb.GetMetadataResp, error) {
@@ -426,6 +431,8 @@ func (app *App) HandleOperatorEvents() {
 		app.ShowError("Disconnected from the server", func() {
 			app.SwitchToPage(app.credentials)
 		})
+
+		app.Reset()
 	}()
 
 	eventStream, err := app.operator.Client().Join(context.Background(), &pb.Empty{})

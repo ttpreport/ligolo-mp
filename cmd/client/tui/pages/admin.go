@@ -60,9 +60,17 @@ func NewAdminPage() *AdminPage {
 	admin.flex.AddItem(admin.server, 3, 0, false)
 	admin.flex.AddItem(firstRow, 0, 100, true)
 
-	admin.AddAndSwitchToPage("main", admin.flex, true)
+	admin.Reset()
 
 	return admin
+}
+
+func (admin *AdminPage) Reset() {
+	for _, page := range admin.GetPageNames(false) {
+		admin.RemovePage(page)
+	}
+
+	admin.AddAndSwitchToPage("main", admin.flex, true)
 }
 
 func (admin *AdminPage) initOperatorsWidget() {

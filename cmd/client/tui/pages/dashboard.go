@@ -71,9 +71,17 @@ func NewDashboardPage() *DashboardPage {
 	dash.flex.AddItem(firstRow, 0, 50, true)
 	dash.flex.AddItem(secondRow, 0, 50, false)
 
-	dash.AddAndSwitchToPage("main", dash.flex, true)
+	dash.Reset()
 
 	return dash
+}
+
+func (dash *DashboardPage) Reset() {
+	for _, page := range dash.GetPageNames(false) {
+		dash.RemovePage(page)
+	}
+
+	dash.AddAndSwitchToPage("main", dash.flex, true)
 }
 
 func (dash *DashboardPage) initSessionsWidget() {

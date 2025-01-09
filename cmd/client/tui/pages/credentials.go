@@ -42,9 +42,17 @@ func NewCredentialsPage() *CredentialsPage {
 
 	creds.initCredentials()
 
-	creds.AddAndSwitchToPage("table", creds.table, true)
+	creds.AddAndSwitchToPage("main", creds.table, true)
 
 	return creds
+}
+
+func (creds *CredentialsPage) Reset() {
+	for _, page := range creds.GetPageNames(false) {
+		creds.RemovePage(page)
+	}
+
+	creds.AddAndSwitchToPage("main", creds.table, true)
 }
 
 func (creds *CredentialsPage) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
