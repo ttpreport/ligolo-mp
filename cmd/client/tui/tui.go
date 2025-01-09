@@ -328,7 +328,7 @@ func (app *App) initAdmin() {
 			return "", err
 		}
 
-		return fullPath, nil
+		return filepath.Abs(fullPath)
 	})
 
 	app.admin.SetAddOperatorFunc(func(name string, isAdmin bool, server string) (*pb.Operator, *pb.OperatorCredentials, error) {
