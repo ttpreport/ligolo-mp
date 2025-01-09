@@ -142,15 +142,14 @@ func (creds *CredentialsPage) initCredentials() {
 			}))
 
 			menu.AddItem(modals.NewMenuModalElem("Remove", func() {
-				creds.DoWithLoader("Removing credentials...", func() {
-					creds.DoWithConfirm("Are you sure?", func() {
+				creds.DoWithConfirm("Are you sure?", func() {
+					creds.DoWithLoader("Removing credentials...", func() {
 						err := creds.deleteCred(oper)
 						if err != nil {
 							creds.ShowError(fmt.Sprintf("Could not remove credentials: %s", err), cleanup)
 							return
 						}
 					})
-
 					creds.ShowInfo("Credentials removed", cleanup)
 				})
 			}))
