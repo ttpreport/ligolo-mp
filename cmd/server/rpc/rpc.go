@@ -372,8 +372,6 @@ func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (
 		}
 	}
 
-	s.connections[targetOper.Name].Terminate()
-
 	removedOperator, err := s.operService.RemoveOperator(in.Name)
 	if err != nil {
 		return nil, err
@@ -382,6 +380,10 @@ func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (
 	err = s.certService.Revoke(removedOperator.Cert, "removed by admin")
 	if err != nil {
 		return nil, err
+	}
+
+	if _, ok := s.connections[targetOper.Name]; ok {
+		s.connections[targetOper.Name].Terminate()
 	}
 
 	return &pb.Empty{}, nil
