@@ -157,8 +157,9 @@ func (creds *CredentialsPage) initCredentials() {
 							creds.ShowError(fmt.Sprintf("Could not remove credentials: %s", err), cleanup)
 							return
 						}
+
+						creds.ShowInfo("Credentials removed", cleanup)
 					})
-					creds.ShowInfo("Credentials removed", cleanup)
 				})
 			}))
 
