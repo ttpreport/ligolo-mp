@@ -1,11 +1,30 @@
 package forms
 
 import (
+	"os"
 	"strings"
 
 	"github.com/rivo/tview"
 	pb "github.com/ttpreport/ligolo-mp/protobuf"
 )
+
+var generate_lastSaveTo string
+var generate_lastServers string
+var generate_lastProxyServer string
+var generate_lastIgnoreEnvProxy bool
+var generate_lastOS int
+var generate_lastArch int
+var generate_lastObfuscate bool
+
+func init() {
+	generate_lastSaveTo, _ = os.Getwd()
+	generate_lastServers = ""
+	generate_lastProxyServer = ""
+	generate_lastIgnoreEnvProxy = false
+	generate_lastOS = 0
+	generate_lastArch = 0
+	generate_lastObfuscate = false
+}
 
 type GenerateForm struct {
 	tview.Flex
@@ -29,38 +48,45 @@ func NewGenerateForm() *GenerateForm {
 	gen.form.SetBorder(true)
 	gen.form.SetButtonsAlign(tview.AlignCenter)
 
-	gen.form.AddInputField("Save to", "", 0, nil,
+	gen.form.AddInputField("Save to", generate_lastSaveTo, 0, nil,
 		func(text string) {
 			gen.path = text
+			generate_lastSaveTo = text
 		},
 	)
 
-	gen.form.AddTextArea("Server (one per line)", "", 0, 0, 0,
+	gen.form.AddTextArea("Server (one per line)", generate_lastServers, 0, 0, 0,
 		func(text string) {
 			gen.req.Servers = text
+			generate_lastServers = text
 		},
 	)
 
-	gen.form.AddInputField("Proxy", "", 0, nil,
+	gen.form.AddInputField("Proxy", generate_lastProxyServer, 0, nil,
 		func(text string) {
 			gen.req.ProxyServer = text
+			generate_lastProxyServer = text
 		},
 	)
 
-	gen.form.AddCheckbox("Ignore env proxy", false, func(checked bool) {
+	gen.form.AddCheckbox("Ignore env proxy", generate_lastIgnoreEnvProxy, func(checked bool) {
 		gen.req.IgnoreEnvProxy = checked
+		generate_lastIgnoreEnvProxy = checked
 	})
 
-	gen.form.AddDropDown("OS", []string{"Windows", "Linux", "Darwin"}, 0, func(option string, _ int) {
+	gen.form.AddDropDown("OS", []string{"Windows", "Linux", "Darwin"}, generate_lastOS, func(option string, index int) {
 		gen.req.GOOS = strings.ToLower(option)
+		generate_lastOS = index
 	})
 
-	gen.form.AddDropDown("Arch", []string{"amd64", "x86"}, 0, func(option string, _ int) {
+	gen.form.AddDropDown("Arch", []string{"amd64", "x86"}, generate_lastArch, func(option string, index int) {
 		gen.req.GOARCH = option
+		generate_lastArch = index
 	})
 
-	gen.form.AddCheckbox("Obfuscate", false, func(checked bool) {
+	gen.form.AddCheckbox("Obfuscate", generate_lastObfuscate, func(checked bool) {
 		gen.req.Obfuscate = checked
+		generate_lastObfuscate = checked
 	})
 
 	gen.form.AddButton("Submit", nil)

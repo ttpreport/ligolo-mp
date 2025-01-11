@@ -6,6 +6,16 @@ import (
 	"github.com/rivo/tview"
 )
 
+var redirector_from string
+var redirector_to string
+var redirector_protocol int
+
+func init() {
+	redirector_from = ""
+	redirector_to = ""
+	redirector_protocol = 0
+}
+
 type AddRedirectorForm struct {
 	tview.Flex
 	form      *tview.Form
@@ -30,28 +40,31 @@ func NewAddRedirectorForm() *AddRedirectorForm {
 
 	page.form.AddInputField(
 		"From",
-		"",
+		redirector_from,
 		0,
 		func(textToCheck string, lastChar rune) bool {
 			return true
 		},
 		func(text string) {
 			page.from = text
+			redirector_from = text
 		},
 	)
 	page.form.AddInputField(
 		"To",
-		"",
+		redirector_to,
 		0,
 		func(textToCheck string, lastChar rune) bool {
 			return true
 		},
 		func(text string) {
 			page.to = text
+			redirector_to = text
 		},
 	)
-	page.form.AddDropDown("Protocol", []string{"TCP", "UDP"}, 0, func(option string, _ int) {
+	page.form.AddDropDown("Protocol", []string{"TCP", "UDP"}, redirector_protocol, func(option string, index int) {
 		page.proto = strings.ToLower(option)
+		redirector_protocol = index
 	})
 
 	page.form.AddButton("Submit", nil)

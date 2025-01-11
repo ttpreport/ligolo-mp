@@ -4,6 +4,14 @@ import (
 	"github.com/rivo/tview"
 )
 
+var route_cidr string
+var route_loopback bool
+
+func init() {
+	route_cidr = ""
+	route_loopback = false
+}
+
 type AddRouteForm struct {
 	tview.Flex
 	form      *tview.Form
@@ -27,20 +35,22 @@ func NewAddRouteForm() *AddRouteForm {
 
 	form.form.AddInputField(
 		"CIDR",
-		"",
+		route_cidr,
 		0,
 		func(textToCheck string, lastChar rune) bool {
 			return true
 		},
 		func(text string) {
 			form.cidr = text
+			route_cidr = text
 		},
 	)
 	form.form.AddCheckbox(
 		"Loopback",
-		false,
+		route_loopback,
 		func(checked bool) {
 			form.loopback = checked
+			route_loopback = checked
 		},
 	)
 

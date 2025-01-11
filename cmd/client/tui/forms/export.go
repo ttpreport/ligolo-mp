@@ -1,8 +1,16 @@
 package forms
 
 import (
+	"os"
+
 	"github.com/rivo/tview"
 )
+
+var export_lastFolder string
+
+func init() {
+	export_lastFolder, _ = os.Getwd()
+}
 
 type ExportForm struct {
 	tview.Flex
@@ -26,13 +34,14 @@ func NewExportForm() *ExportForm {
 
 	export.form.AddInputField(
 		"Folder",
-		"",
+		export_lastFolder,
 		0,
 		func(textToCheck string, lastChar rune) bool {
 			return true
 		},
 		func(text string) {
 			export.path = text
+			export_lastFolder = text
 		})
 
 	export.form.AddButton("Submit", nil)

@@ -4,6 +4,16 @@ import (
 	"github.com/rivo/tview"
 )
 
+var operator_name string
+var operator_server string
+var operator_isAdmin bool
+
+func init() {
+	operator_name = ""
+	operator_server = ""
+	operator_isAdmin = false
+}
+
 type OperatorForm struct {
 	tview.Flex
 	form *tview.Form
@@ -28,20 +38,23 @@ func NewOperatorForm() *OperatorForm {
 	gen.form.SetBorder(true)
 	gen.form.SetButtonsAlign(tview.AlignCenter)
 
-	gen.form.AddInputField("Name", "", 0, func(textToCheck string, lastChar rune) bool {
+	gen.form.AddInputField("Name", operator_name, 0, func(textToCheck string, lastChar rune) bool {
 		return true
 	}, func(text string) {
 		gen.name = text
+		operator_name = text
 	})
 
-	gen.form.AddInputField("Server", "", 0, func(textToCheck string, lastChar rune) bool {
+	gen.form.AddInputField("Server", operator_server, 0, func(textToCheck string, lastChar rune) bool {
 		return true
 	}, func(text string) {
 		gen.server = text
+		operator_server = text
 	})
 
-	gen.form.AddCheckbox("Admin", false, func(checked bool) {
+	gen.form.AddCheckbox("Admin", operator_isAdmin, func(checked bool) {
 		gen.isAdmin = checked
+		operator_isAdmin = checked
 	})
 
 	gen.form.AddButton("Submit", nil)
