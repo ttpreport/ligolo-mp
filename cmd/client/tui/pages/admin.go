@@ -237,8 +237,16 @@ func (admin *AdminPage) InputHandler() func(event *tcell.EventKey, setFocus func
 				defaultHandler(event, setFocus)
 			}
 		} else {
-			defaultHandler := admin.Pages.InputHandler()
-			defaultHandler(event, setFocus)
+			switch key {
+			case tcell.KeyEscape:
+				if admin.GetPageCount() > 1 {
+					frontPage, _ := admin.GetFrontPage()
+					admin.RemovePage(frontPage)
+				}
+			default:
+				defaultHandler := admin.Pages.InputHandler()
+				defaultHandler(event, setFocus)
+			}
 		}
 
 	}

@@ -332,8 +332,16 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 				defaultHandler(event, setFocus)
 			}
 		} else {
-			defaultHandler := dash.Pages.InputHandler()
-			defaultHandler(event, setFocus)
+			switch key {
+			case tcell.KeyEscape:
+				if dash.GetPageCount() > 1 {
+					frontPage, _ := dash.GetFrontPage()
+					dash.RemovePage(frontPage)
+				}
+			default:
+				defaultHandler := dash.Pages.InputHandler()
+				defaultHandler(event, setFocus)
+			}
 		}
 	}
 }
