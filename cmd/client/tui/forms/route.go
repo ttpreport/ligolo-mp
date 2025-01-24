@@ -27,6 +27,9 @@ func NewAddRouteForm() *AddRouteForm {
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
+
+		cidr:     route_cidr,
+		loopback: route_loopback,
 	}
 
 	form.form.SetTitle("Add route").SetTitleAlign(tview.AlignCenter)

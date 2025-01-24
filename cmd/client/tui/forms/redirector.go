@@ -8,12 +8,14 @@ import (
 
 var redirector_from string
 var redirector_to string
-var redirector_protocol int
+var redirector_protocolIdx int
+var redirector_protocolVal string
 
 func init() {
 	redirector_from = ""
 	redirector_to = ""
-	redirector_protocol = 0
+	redirector_protocolIdx = 0
+	redirector_protocolVal = ""
 }
 
 type AddRedirectorForm struct {
@@ -32,6 +34,10 @@ func NewAddRedirectorForm() *AddRedirectorForm {
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
+
+		from:  redirector_from,
+		to:    redirector_to,
+		proto: redirector_protocolVal,
 	}
 
 	page.form.SetTitle("Add redirector").SetTitleAlign(tview.AlignCenter)
@@ -62,9 +68,10 @@ func NewAddRedirectorForm() *AddRedirectorForm {
 			redirector_to = text
 		},
 	)
-	page.form.AddDropDown("Protocol", []string{"TCP", "UDP"}, redirector_protocol, func(option string, index int) {
+	page.form.AddDropDown("Protocol", []string{"TCP", "UDP"}, redirector_protocolIdx, func(option string, index int) {
 		page.proto = strings.ToLower(option)
-		redirector_protocol = index
+		redirector_protocolIdx = index
+		redirector_protocolVal = strings.ToLower(option)
 	})
 
 	page.form.AddButton("Submit", nil)

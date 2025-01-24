@@ -12,8 +12,10 @@ var generate_lastSaveTo string
 var generate_lastServers string
 var generate_lastProxyServer string
 var generate_lastIgnoreEnvProxy bool
-var generate_lastOS int
-var generate_lastArch int
+var generate_lastOSidx int
+var generate_lastOSval string
+var generate_lastArchIdx int
+var generate_lastArchVal string
 var generate_lastObfuscate bool
 
 func init() {
@@ -21,8 +23,10 @@ func init() {
 	generate_lastServers = ""
 	generate_lastProxyServer = ""
 	generate_lastIgnoreEnvProxy = false
-	generate_lastOS = 0
-	generate_lastArch = 0
+	generate_lastOSidx = 0
+	generate_lastOSval = ""
+	generate_lastArchIdx = 0
+	generate_lastArchVal = ""
 	generate_lastObfuscate = false
 }
 
@@ -41,7 +45,16 @@ func NewGenerateForm() *GenerateForm {
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
-		req:       &pb.GenerateAgentReq{},
+
+		req: &pb.GenerateAgentReq{
+			Servers:        generate_lastServers,
+			ProxyServer:    generate_lastProxyServer,
+			IgnoreEnvProxy: generate_lastIgnoreEnvProxy,
+			GOOS:           generate_lastOSval,
+			GOARCH:         generate_lastArchVal,
+			Obfuscate:      generate_lastObfuscate,
+		},
+		path: generate_lastSaveTo,
 	}
 
 	gen.form.SetTitle("Generate agent").SetTitleAlign(tview.AlignCenter)
@@ -74,14 +87,16 @@ func NewGenerateForm() *GenerateForm {
 		generate_lastIgnoreEnvProxy = checked
 	})
 
-	gen.form.AddDropDown("OS", []string{"Windows", "Linux", "Darwin"}, generate_lastOS, func(option string, index int) {
+	gen.form.AddDropDown("OS", []string{"Windows", "Linux", "Darwin"}, generate_lastOSidx, func(option string, index int) {
 		gen.req.GOOS = strings.ToLower(option)
-		generate_lastOS = index
+		generate_lastOSidx = index
+		generate_lastOSval = strings.ToLower(option)
 	})
 
-	gen.form.AddDropDown("Arch", []string{"amd64", "x86"}, generate_lastArch, func(option string, index int) {
+	gen.form.AddDropDown("Arch", []string{"amd64", "x86", "arm64", "arm"}, generate_lastArchIdx, func(option string, index int) {
 		gen.req.GOARCH = option
-		generate_lastArch = index
+		generate_lastArchIdx = index
+		generate_lastArchVal = option
 	})
 
 	gen.form.AddCheckbox("Obfuscate", generate_lastObfuscate, func(checked bool) {

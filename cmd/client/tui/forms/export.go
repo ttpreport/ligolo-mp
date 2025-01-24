@@ -26,6 +26,8 @@ func NewExportForm() *ExportForm {
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
+
+		path: export_lastFolder,
 	}
 
 	export.form.SetTitle("Export operator").SetTitleAlign(tview.AlignCenter)

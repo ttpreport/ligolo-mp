@@ -32,6 +32,10 @@ func NewOperatorForm() *OperatorForm {
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
+
+		name:    operator_name,
+		server:  operator_server,
+		isAdmin: operator_isAdmin,
 	}
 
 	gen.form.SetTitle("New operator").SetTitleAlign(tview.AlignCenter)
