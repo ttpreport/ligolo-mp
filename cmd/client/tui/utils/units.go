@@ -19,7 +19,7 @@ func HumanTime(v time.Time) string {
 		v.Month(),
 		v.Day(),
 		v.Hour(),
-		v.Hour(),
+		v.Minute(),
 		v.Second())
 }
 

@@ -135,6 +135,7 @@ func (sess *Session) RemoveRoute(cidr string) error {
 
 func (sess *Session) Copy(source *Session) {
 	sess.Alias = source.Alias
+	sess.FirstSeen = source.FirstSeen
 
 	for _, route := range source.Tun.GetRoutes() {
 		if err := sess.NewRoute(route.Cidr.String(), route.IsLoopback); err != nil {
@@ -184,7 +185,7 @@ func (sess *Session) Connect(multiplex *yamux.Session) error {
 	sess.IsConnected = true
 
 	if sess.FirstSeen.IsZero() {
-		sess.FirstSeen = time.Now()
+		sess.FirstSeen = time.Now().UTC()
 	}
 
 	return nil
