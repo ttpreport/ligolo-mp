@@ -1,6 +1,6 @@
 module github.com/ttpreport/ligolo-mp
 
-go 1.23.2
+go 1.23.5
 
 replace github.com/ttpreport/ligolo-mp => ./
 

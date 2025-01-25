@@ -1,6 +1,6 @@
-GO_VER = 1.22.2
+GO_VER = 1.23.5
 BLOAT_FILES = AUTHORS CONTRIBUTORS PATENTS VERSION favicon.ico robots.txt SECURITY.md CONTRIBUTING.md LICENSE README.md ./doc ./test ./api ./misc
-GARBLE_VER = 1.22.2
+GARBLE_VER = 1.23.5
 
 .PHONY: all
 all: assets binaries
@@ -21,7 +21,7 @@ go:
 	rm -f assets/artifacts/go/pkg/tool/linux_amd64/tour
 	rm -f assets/artifacts/go/pkg/tool/linux_amd64/test2json
 	# Build garble
-	cd assets/artifacts/go/bin && curl -L --output garble https://github.com/moloch--/garble/releases/download/v$(GARBLE_VER)/garble_linux && chmod +x garble
+	cd assets/artifacts/go/bin && curl -L --output garble https://github.com/ttpreport/garble/releases/download/v$(GARBLE_VER)/garble_linux_amd64 && chmod +x garble
 	# Bundle
 	cd assets/artifacts && zip -r go.zip ./go
 	# Clean up
