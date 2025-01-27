@@ -444,6 +444,7 @@ func (app *App) HandleOperatorEvents() {
 	for {
 		event, err := eventStream.Recv()
 		if err != nil {
+			app.operator.Disconnect()
 			return
 		}
 

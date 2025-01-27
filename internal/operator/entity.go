@@ -14,6 +14,7 @@ import (
 	"github.com/ttpreport/ligolo-mp/internal/certificate"
 	pb "github.com/ttpreport/ligolo-mp/protobuf"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -124,7 +125,7 @@ func (oper *Operator) Disconnect() error {
 
 func (oper *Operator) IsConnected() bool {
 	if oper.conn != nil {
-		return true
+		return oper.conn.GetState() != connectivity.Shutdown
 	}
 
 	return false
