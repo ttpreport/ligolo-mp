@@ -114,6 +114,10 @@ func (oper *Operator) Connect() error {
 }
 
 func (oper *Operator) Disconnect() error {
+	if oper.conn == nil {
+		return nil
+	}
+
 	if err := oper.conn.Close(); err != nil {
 		return err
 	}

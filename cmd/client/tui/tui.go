@@ -72,6 +72,8 @@ func NewApp(operService *operator.OperatorService) *App {
 func (app *App) Reset() {
 	app.dashboard.Reset()
 	app.admin.Reset()
+
+	app.SwitchToPage(app.credentials)
 }
 
 func (app *App) autoRedraw() {
@@ -89,7 +91,7 @@ func (app *App) autoRefresh() {
 	for {
 		select {
 		case <-ticker.C:
-			if app.operator != nil && app.operator.IsConnected() {
+			if app.IsConnected() {
 				app.dashboard.RefreshData()
 				app.admin.RefreshData()
 			}
@@ -170,11 +172,7 @@ func (app *App) initDashboard() {
 	})
 
 	app.dashboard.SetDisconnectFunc(func() {
-		app.operator.Disconnect()
-		app.log(events.ERROR, fmt.Sprintf("Disconnected from %s", app.operator.Server))
-
-		app.operator = nil
-
+		app.Disconnect()
 		app.Reset()
 	})
 
@@ -399,11 +397,7 @@ func (app *App) initAdmin() {
 	})
 
 	app.admin.SetDisconnectFunc(func() {
-		app.operator.Disconnect()
-		app.log(events.ERROR, fmt.Sprintf("Disconnected from %s", app.operator.Server))
-
-		app.operator = nil
-
+		app.Disconnect()
 		app.Reset()
 	})
 
@@ -428,11 +422,9 @@ func (app *App) log(severity events.EventType, data string) {
 
 func (app *App) HandleOperatorEvents() {
 	defer func() {
-		app.ShowError("Disconnected from the server", func() {
-			app.SwitchToPage(app.credentials)
-		})
-
+		app.Disconnect()
 		app.Reset()
+		app.ShowError("Disconnected from the server", nil)
 	}()
 
 	eventStream, err := app.operator.Client().Join(context.Background(), &pb.Empty{})
@@ -444,7 +436,6 @@ func (app *App) HandleOperatorEvents() {
 	for {
 		event, err := eventStream.Recv()
 		if err != nil {
-			app.operator.Disconnect()
 			return
 		}
 
@@ -455,11 +446,22 @@ func (app *App) HandleOperatorEvents() {
 	}
 }
 
-func (app *App) SwitchOperator(oper *operator.Operator) error {
-	if app.operator != nil {
-		app.log(events.ERROR, fmt.Sprintf("Disconnected from %s", app.operator.Server))
+func (app *App) IsConnected() bool {
+	return app.operator != nil && app.operator.IsConnected()
+}
+
+func (app *App) Disconnect() {
+	if app.IsConnected() {
 		app.operator.Disconnect()
-		app.operator = nil
+		app.log(events.ERROR, fmt.Sprintf("Disconnected from %s", app.operator.Server))
+	}
+
+	app.operator = nil
+}
+
+func (app *App) SwitchOperator(oper *operator.Operator) error {
+	if app.IsConnected() {
+		app.Disconnect()
 	}
 
 	app.log(events.OK, fmt.Sprintf("Connecting to %s as %s", oper.Server, oper.Name))
