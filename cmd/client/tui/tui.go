@@ -184,6 +184,11 @@ func (app *App) initDashboard() {
 			return "", err
 		}
 
+		info, err := os.Stat(path)
+		if info.IsDir() {
+			path = filepath.Join(path, "agent.bin")
+		}
+
 		if err = os.WriteFile(path, r.AgentBinary, 0755); err != nil {
 			return "", err
 		}
