@@ -8,7 +8,6 @@ import (
 
 	"github.com/ttpreport/ligolo-mp/assets"
 	"github.com/ttpreport/ligolo-mp/cmd/server/agents"
-	"github.com/ttpreport/ligolo-mp/cmd/server/cli"
 	"github.com/ttpreport/ligolo-mp/cmd/server/rpc"
 	"github.com/ttpreport/ligolo-mp/internal/certificate"
 	"github.com/ttpreport/ligolo-mp/internal/config"
@@ -19,7 +18,6 @@ import (
 )
 
 func main() {
-	var daemonFlag = flag.Bool("daemon", false, "enable daemon mode")
 	var verboseFlag = flag.Bool("v", false, "enable verbose mode")
 	var listenInterface = flag.String("agent-addr", "0.0.0.0:11601", "listening address")
 	var maxInflight = flag.Int("max-inflight", 4096, "max inflight TCP connections")
@@ -132,21 +130,17 @@ func main() {
 
 	quit := make(chan error, 1)
 
-	if *daemonFlag {
-		go func() {
-			quit <- agents.Run(cfg, certService, sessService)
-		}()
-		go func() {
-			quit <- rpc.Run(cfg, certService, sessService, operService, assetsService)
-		}()
+	go func() {
+		quit <- agents.Run(cfg, certService, sessService)
+	}()
+	go func() {
+		quit <- rpc.Run(cfg, certService, sessService, operService, assetsService)
+	}()
 
-		slog.Info("server started")
+	slog.Info("server started")
 
-		ret := <-quit
-		if ret != nil {
-			slog.Info("server terminated", slog.Any("exit", ret))
-		}
-	} else {
-		cli.Run(cfg, certService, operService)
+	ret := <-quit
+	if ret != nil {
+		slog.Info("server terminated", slog.Any("exit", ret))
 	}
 }

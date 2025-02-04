@@ -132,7 +132,7 @@ Type=simple
 Restart=on-failure
 RestartSec=3
 User=root
-ExecStart=/root/ligolo-mp-server -daemon
+ExecStart=/root/ligolo-mp-server
 
 [Install]
 WantedBy=multi-user.target
