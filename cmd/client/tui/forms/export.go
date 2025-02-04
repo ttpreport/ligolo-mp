@@ -35,7 +35,7 @@ func NewExportForm() *ExportForm {
 	export.form.SetButtonsAlign(tview.AlignCenter)
 
 	export.form.AddInputField(
-		"Folder",
+		"Save to",
 		export_lastFolder,
 		0,
 		func(textToCheck string, lastChar rune) bool {

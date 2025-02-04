@@ -185,7 +185,7 @@ func (app *App) initDashboard() {
 		}
 
 		info, err := os.Stat(path)
-		if info.IsDir() {
+		if err == nil && info.IsDir() {
 			path = filepath.Join(path, "agent.bin")
 		}
 
@@ -331,12 +331,16 @@ func (app *App) initAdmin() {
 			return "", err
 		}
 
-		fullPath := filepath.Join(path, fmt.Sprintf("%s_%s_ligolo-mp.json", r.Operator.Name, r.Operator.Server))
-		if err = os.WriteFile(fullPath, r.Config, os.ModePerm); err != nil {
+		info, err := os.Stat(path)
+		if err == nil && info.IsDir() {
+			path = filepath.Join(path, fmt.Sprintf("%s_%s_ligolo-mp.json", r.Operator.Name, r.Operator.Server))
+		}
+
+		if err = os.WriteFile(path, r.Config, os.ModePerm); err != nil {
 			return "", err
 		}
 
-		return filepath.Abs(fullPath)
+		return filepath.Abs(path)
 	})
 
 	app.admin.SetAddOperatorFunc(func(name string, isAdmin bool, server string) (*pb.Operator, *pb.OperatorCredentials, error) {
