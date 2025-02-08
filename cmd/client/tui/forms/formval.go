@@ -1,5 +1,9 @@
 package forms
 
+import "os"
+
+var wd, _ = os.Getwd()
+
 type FormVal[T any] struct {
 	Last T
 	Hint string

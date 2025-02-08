@@ -7,25 +7,32 @@ import (
 )
 
 var (
-	saveTo = FormVal[string]{
+	generate_saveTo = FormVal[string]{
+		Last: wd,
 		Hint: "Path to save the agent binary. Specify only directory for default filename, otherwise provide full path with filename.\n\nExample:\n/home/kali\n/home/kali/myagent.exe",
 	}
-	servers = FormVal[string]{
-		Hint: "Server list, one per line - they are tried sequentially until a successfull connection.\n\nExample:\n1.3.3.7:11601\n7.3.3.1:1234\n8.0.0.85:1337",
+
+	generate_servers = FormVal[string]{
+		Hint: "Server list, one per line - they are tried sequentially until a successful connection.\n\nExample:\n1.3.3.7:11601\n7.3.3.1:1234\n8.0.0.85:1337",
 	}
-	proxy = FormVal[string]{
+
+	generate_proxy = FormVal[string]{
 		Hint: "Will override environment variables configuration. Supported protocols: socks5, socks5h, http, https.\n\nExample:\nhttp://proxy:8080\nsocks5://1.2.3.4:3128",
 	}
-	ignoreEnvProxy = FormVal[bool]{
+
+	generate_ignoreEnvProxy = FormVal[bool]{
 		Hint: "If checked, will ignore proxies configured via environment variables and attempt a direct connection.",
 	}
-	goos = FormVal[FormSelectVal]{
+
+	generate_goos = FormVal[FormSelectVal]{
 		Hint: "Target operating system",
 	}
-	goarch = FormVal[FormSelectVal]{
+
+	generate_goarch = FormVal[FormSelectVal]{
 		Hint: "Target architecture",
 	}
-	obfuscate = FormVal[bool]{
+
+	generate_obfuscate = FormVal[bool]{
 		Hint: "Produces obfuscated binary instead of a regular one - might help with AV evasion.",
 	}
 )
@@ -57,97 +64,97 @@ func NewGenerateForm() *GenerateForm {
 
 	saveToField := tview.NewInputField()
 	saveToField.SetLabel("Save to")
-	saveToField.SetText(saveTo.Last)
+	saveToField.SetText(generate_saveTo.Last)
 	saveToField.SetFocusFunc(func() {
-		hintBox.SetText(saveTo.Hint)
+		hintBox.SetText(generate_saveTo.Hint)
 	})
 	saveToField.SetChangedFunc(func(text string) {
-		saveTo.Last = text
+		generate_saveTo.Last = text
 	})
 	gen.form.AddFormItem(saveToField)
 
 	serversField := tview.NewTextArea()
 	serversField.SetLabel("Servers")
-	serversField.SetText(servers.Last, true)
+	serversField.SetText(generate_servers.Last, true)
 	serversField.SetFocusFunc(func() {
-		hintBox.SetText(servers.Hint)
+		hintBox.SetText(generate_servers.Hint)
 	})
 	serversField.SetChangedFunc(func() {
-		servers.Last = serversField.GetText()
+		generate_servers.Last = serversField.GetText()
 	})
 	gen.form.AddFormItem(serversField)
 
 	proxyField := tview.NewInputField()
 	proxyField.SetLabel("Proxy")
-	proxyField.SetText(proxy.Last)
+	proxyField.SetText(generate_proxy.Last)
 	proxyField.SetFocusFunc(func() {
-		hintBox.SetText(proxy.Hint)
+		hintBox.SetText(generate_proxy.Hint)
 	})
 	proxyField.SetChangedFunc(func(text string) {
-		proxy.Last = text
+		generate_proxy.Last = text
 	})
 	gen.form.AddFormItem(proxyField)
 
 	ignoreEnvProxyField := tview.NewCheckbox()
 	ignoreEnvProxyField.SetLabel("Ignore env proxy")
-	ignoreEnvProxyField.SetChecked(ignoreEnvProxy.Last)
+	ignoreEnvProxyField.SetChecked(generate_ignoreEnvProxy.Last)
 	ignoreEnvProxyField.SetFocusFunc(func() {
-		hintBox.SetText(ignoreEnvProxy.Hint)
+		hintBox.SetText(generate_ignoreEnvProxy.Hint)
 	})
 	ignoreEnvProxyField.SetChangedFunc(func(checked bool) {
-		ignoreEnvProxy.Last = checked
+		generate_ignoreEnvProxy.Last = checked
 	})
 	gen.form.AddFormItem(ignoreEnvProxyField)
 
 	goosField := tview.NewDropDown()
 	goosField.SetLabel("OS")
 	goosField.SetFocusFunc(func() {
-		hintBox.SetText(goos.Hint)
+		hintBox.SetText(generate_goos.Hint)
 	})
 	goosField.SetOptions([]string{"Windows", "Linux", "Darwin"}, func(option string, index int) {
-		goos.Last.ID = index
-		goos.Last.Value = strings.ToLower(option)
+		generate_goos.Last.ID = index
+		generate_goos.Last.Value = strings.ToLower(option)
 	})
-	goosField.SetCurrentOption(goos.Last.ID)
+	goosField.SetCurrentOption(generate_goos.Last.ID)
 	gen.form.AddFormItem(goosField)
 
 	goarchField := tview.NewDropDown()
 	goarchField.SetLabel("Arch")
 	goarchField.SetFocusFunc(func() {
-		hintBox.SetText(goarch.Hint)
+		hintBox.SetText(generate_goarch.Hint)
 	})
 	goarchField.SetOptions([]string{"amd64", "x86", "arm64", "arm"}, func(option string, index int) {
-		goarch.Last.ID = index
-		goarch.Last.Value = option
+		generate_goarch.Last.ID = index
+		generate_goarch.Last.Value = option
 	})
-	goarchField.SetCurrentOption(goarch.Last.ID)
+	goarchField.SetCurrentOption(generate_goarch.Last.ID)
 	gen.form.AddFormItem(goarchField)
 
 	obfuscateField := tview.NewCheckbox()
 	obfuscateField.SetLabel("Obfuscate")
-	obfuscateField.SetChecked(obfuscate.Last)
+	obfuscateField.SetChecked(generate_obfuscate.Last)
 	obfuscateField.SetFocusFunc(func() {
-		hintBox.SetText(obfuscate.Hint)
+		hintBox.SetText(generate_obfuscate.Hint)
 	})
 	obfuscateField.SetBlurFunc(func() {
 		hintBox.Clear()
 	})
 	obfuscateField.SetChangedFunc(func(checked bool) {
-		obfuscate.Last = checked
+		generate_obfuscate.Last = checked
 	})
 	gen.form.AddFormItem(obfuscateField)
 
 	gen.form.AddButton("Submit", nil)
 	gen.form.AddButton("Cancel", nil)
 
-	formFlex := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(gen.form, 0, 2, true).
-		AddItem(hintBox, 0, 1, false)
+	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(gen.form, 23, 1, true).
+		AddItem(hintBox, 11, 1, false)
 
 	gen.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(formFlex, 23, 1, true).
+			AddItem(formFlex, 0, 1, true).
 			AddItem(nil, 0, 1, false), 0, 3, true).
 		AddItem(nil, 0, 1, false)
 
@@ -163,13 +170,13 @@ func (form *GenerateForm) SetSubmitFunc(f func(path string, servers string, os s
 	submitBtn := form.form.GetButton(btnId)
 	submitBtn.SetSelectedFunc(func() {
 		f(
-			saveTo.Last,
-			servers.Last,
-			goos.Last.Value,
-			goarch.Last.Value,
-			obfuscate.Last,
-			proxy.Last,
-			ignoreEnvProxy.Last,
+			generate_saveTo.Last,
+			generate_servers.Last,
+			generate_goos.Last.Value,
+			generate_goarch.Last.Value,
+			generate_obfuscate.Last,
+			generate_proxy.Last,
+			generate_ignoreEnvProxy.Last,
 		)
 	})
 }

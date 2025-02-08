@@ -6,24 +6,23 @@ import (
 	"github.com/rivo/tview"
 )
 
-var redirector_from string
-var redirector_to string
-var redirector_protocolIdx int
-var redirector_protocolVal string
+var (
+	redirector_from = FormVal[string]{
+		Hint: "Address to listen to on the agent.\n\nExample:\n0.0.0.0:1337",
+	}
 
-func init() {
-	redirector_from = ""
-	redirector_to = ""
-	redirector_protocolIdx = 0
-	redirector_protocolVal = ""
-}
+	redirector_to = FormVal[string]{
+		Hint: "Address to send traffic to.\n\nExample:\n1.2.3.4:7331",
+	}
+
+	redirector_protocol = FormVal[FormSelectVal]{
+		Hint: "Network protocol to use",
+	}
+)
 
 type AddRedirectorForm struct {
 	tview.Flex
 	form      *tview.Form
-	from      string
-	to        string
-	proto     string
 	submitBtn *tview.Button
 	cancelBtn *tview.Button
 }
@@ -34,53 +33,66 @@ func NewAddRedirectorForm() *AddRedirectorForm {
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
-
-		from:  redirector_from,
-		to:    redirector_to,
-		proto: redirector_protocolVal,
 	}
+
+	hintBox := tview.NewTextView()
+	hintBox.SetTitle("HINT")
+	hintBox.SetTitleAlign(tview.AlignCenter)
+	hintBox.SetBorder(true)
+	hintBox.SetBorderPadding(1, 1, 1, 1)
 
 	page.form.SetTitle("Add redirector").SetTitleAlign(tview.AlignCenter)
 	page.form.SetBorder(true)
 	page.form.SetButtonsAlign(tview.AlignCenter)
 
-	page.form.AddInputField(
-		"From",
-		redirector_from,
-		0,
-		func(textToCheck string, lastChar rune) bool {
-			return true
-		},
-		func(text string) {
-			page.from = text
-			redirector_from = text
-		},
-	)
-	page.form.AddInputField(
-		"To",
-		redirector_to,
-		0,
-		func(textToCheck string, lastChar rune) bool {
-			return true
-		},
-		func(text string) {
-			page.to = text
-			redirector_to = text
-		},
-	)
-	page.form.AddDropDown("Protocol", []string{"TCP", "UDP"}, redirector_protocolIdx, func(option string, index int) {
-		page.proto = strings.ToLower(option)
-		redirector_protocolIdx = index
-		redirector_protocolVal = strings.ToLower(option)
+	fromField := tview.NewInputField()
+	fromField.SetLabel("From")
+	fromField.SetText(redirector_from.Last)
+	fromField.SetFocusFunc(func() {
+		hintBox.SetText(redirector_from.Hint)
 	})
+	fromField.SetChangedFunc(func(text string) {
+		redirector_from.Last = text
+	})
+	page.form.AddFormItem(fromField)
+
+	toField := tview.NewInputField()
+	toField.SetLabel("From")
+	toField.SetText(redirector_to.Last)
+	toField.SetFocusFunc(func() {
+		hintBox.SetText(redirector_to.Hint)
+	})
+	toField.SetChangedFunc(func(text string) {
+		redirector_to.Last = text
+	})
+	page.form.AddFormItem(toField)
+
+	protocolField := tview.NewDropDown()
+	protocolField.SetLabel("Protocol")
+	protocolField.SetFocusFunc(func() {
+		hintBox.SetText(redirector_protocol.Hint)
+	})
+	protocolField.SetOptions([]string{"TCP", "UDP"}, func(option string, index int) {
+		redirector_protocol.Last.ID = index
+		redirector_protocol.Last.Value = strings.ToLower(option)
+	})
+	protocolField.SetBlurFunc(func() {
+		hintBox.Clear()
+	})
+	protocolField.SetCurrentOption(redirector_protocol.Last.ID)
+	page.form.AddFormItem(protocolField)
 
 	page.form.AddButton("Submit", nil)
 	page.form.AddButton("Cancel", nil)
 
+	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(page.form, 11, 1, true).
+		AddItem(hintBox, 8, 1, false)
+
 	page.Flex.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(page.form, 11, 1, true).
+			AddItem(formFlex, 0, 1, true).
 			AddItem(nil, 0, 1, false),
 			0, 1, true).
 		AddItem(nil, 0, 1, false)
@@ -96,7 +108,7 @@ func (page *AddRedirectorForm) SetSubmitFunc(f func(string, string, string)) {
 	btnId := page.form.GetButtonIndex("Submit")
 	submitBtn := page.form.GetButton(btnId)
 	submitBtn.SetSelectedFunc(func() {
-		f(page.from, page.to, page.proto)
+		f(redirector_from.Last, redirector_to.Last, redirector_protocol.Last.Value)
 	})
 }
 

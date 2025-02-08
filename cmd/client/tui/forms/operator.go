@@ -4,74 +4,97 @@ import (
 	"github.com/rivo/tview"
 )
 
-var operator_name string
-var operator_server string
-var operator_isAdmin bool
+var (
+	operator_name = FormVal[string]{
+		Hint: "Operator name",
+	}
 
-func init() {
-	operator_name = ""
-	operator_server = ""
-	operator_isAdmin = false
-}
+	operator_server = FormVal[string]{
+		Hint: "Address of this server with a port.\n\nExample:\n1.2.3.4:58008",
+	}
+
+	operator_isAdmin = FormVal[bool]{
+		Hint: "If checked, operator will have access to administrative functions",
+	}
+)
 
 type OperatorForm struct {
 	tview.Flex
 	form *tview.Form
-
-	name    string
-	isAdmin bool
-	server  string
 
 	submitBtn *tview.Button
 	cancelBtn *tview.Button
 }
 
 func NewOperatorForm() *OperatorForm {
-	gen := &OperatorForm{
+	form := &OperatorForm{
 		Flex:      *tview.NewFlex(),
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
-
-		name:    operator_name,
-		server:  operator_server,
-		isAdmin: operator_isAdmin,
 	}
 
-	gen.form.SetTitle("New operator").SetTitleAlign(tview.AlignCenter)
-	gen.form.SetBorder(true)
-	gen.form.SetButtonsAlign(tview.AlignCenter)
+	hintBox := tview.NewTextView()
+	hintBox.SetTitle("HINT")
+	hintBox.SetTitleAlign(tview.AlignCenter)
+	hintBox.SetBorder(true)
+	hintBox.SetBorderPadding(1, 1, 1, 1)
 
-	gen.form.AddInputField("Name", operator_name, 0, func(textToCheck string, lastChar rune) bool {
-		return true
-	}, func(text string) {
-		gen.name = text
-		operator_name = text
+	form.form.SetTitle("New operator").SetTitleAlign(tview.AlignCenter)
+	form.form.SetBorder(true)
+	form.form.SetButtonsAlign(tview.AlignCenter)
+
+	nameField := tview.NewInputField()
+	nameField.SetLabel("Name")
+	nameField.SetText(operator_name.Last)
+	nameField.SetFocusFunc(func() {
+		hintBox.SetText(operator_name.Hint)
 	})
-
-	gen.form.AddInputField("Server", operator_server, 0, func(textToCheck string, lastChar rune) bool {
-		return true
-	}, func(text string) {
-		gen.server = text
-		operator_server = text
+	nameField.SetChangedFunc(func(text string) {
+		operator_name.Last = text
 	})
+	form.form.AddFormItem(nameField)
 
-	gen.form.AddCheckbox("Admin", operator_isAdmin, func(checked bool) {
-		gen.isAdmin = checked
-		operator_isAdmin = checked
+	serverField := tview.NewInputField()
+	serverField.SetLabel("Server")
+	serverField.SetText(operator_server.Last)
+	serverField.SetFocusFunc(func() {
+		hintBox.SetText(operator_server.Hint)
 	})
+	serverField.SetChangedFunc(func(text string) {
+		operator_server.Last = text
+	})
+	form.form.AddFormItem(serverField)
 
-	gen.form.AddButton("Submit", nil)
-	gen.form.AddButton("Cancel", nil)
+	isAdminField := tview.NewCheckbox()
+	isAdminField.SetLabel("Admin")
+	isAdminField.SetChecked(operator_isAdmin.Last)
+	isAdminField.SetFocusFunc(func() {
+		hintBox.SetText(operator_isAdmin.Hint)
+	})
+	isAdminField.SetChangedFunc(func(checked bool) {
+		operator_isAdmin.Last = checked
+	})
+	isAdminField.SetBlurFunc(func() {
+		hintBox.Clear()
+	})
+	form.form.AddFormItem(isAdminField)
 
-	gen.AddItem(nil, 0, 1, false).
+	form.form.AddButton("Submit", nil)
+	form.form.AddButton("Cancel", nil)
+
+	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(form.form, 11, 1, true).
+		AddItem(hintBox, 8, 1, false)
+
+	form.AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(gen.form, 11, 1, true).
+			AddItem(formFlex, 0, 1, true).
 			AddItem(nil, 0, 1, false), 0, 1, true).
 		AddItem(nil, 0, 1, false)
 
-	return gen
+	return form
 }
 
 func (page *OperatorForm) GetID() string {
@@ -82,7 +105,7 @@ func (page *OperatorForm) SetSubmitFunc(f func(string, bool, string)) {
 	btnId := page.form.GetButtonIndex("Submit")
 	submitBtn := page.form.GetButton(btnId)
 	submitBtn.SetSelectedFunc(func() {
-		f(page.name, page.isAdmin, page.server)
+		f(operator_name.Last, operator_isAdmin.Last, operator_server.Last)
 	})
 }
 
