@@ -124,7 +124,7 @@ func NewGenerateForm() *GenerateForm {
 	gen.form.AddFormItem(goarchField)
 
 	obfuscateField := tview.NewCheckbox()
-	obfuscateField.SetLabel("Ignore env proxy")
+	obfuscateField.SetLabel("Obfuscate")
 	obfuscateField.SetChecked(obfuscate.Last)
 	obfuscateField.SetFocusFunc(func() {
 		hintBox.SetText(obfuscate.Hint)
