@@ -27,7 +27,7 @@ type DashboardPage struct {
 	getMetadata                 func() (*pb.GetMetadataResp, error)
 	adminFunc                   func()
 	disconnectFunc              func()
-	generateFunc                func(string, *pb.GenerateAgentReq) (string, error)
+	generateFunc                func(path string, servers string, goos string, goarch string, obfuscate bool, proxy string, ignoreEnvProxy bool) (string, error)
 	sessionStartFunc            func(*pb.Session) error
 	sessionStopFunc             func(*pb.Session) error
 	sessionRenameFunc           func(*pb.Session, string) error
@@ -311,9 +311,9 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 				dash.disconnectFunc()
 			case tcell.KeyCtrlN:
 				gen := forms.NewGenerateForm()
-				gen.SetSubmitFunc(func(req *pb.GenerateAgentReq, path string) {
+				gen.SetSubmitFunc(func(path string, servers string, goos string, goarch string, obfuscate bool, proxy string, ignoreEnvProxy bool) {
 					dash.DoWithLoader("Generating agent...", func() {
-						fullPath, err := dash.generateFunc(path, req)
+						fullPath, err := dash.generateFunc(path, servers, goos, goarch, obfuscate, proxy, ignoreEnvProxy)
 						if err != nil {
 							dash.ShowError(fmt.Sprintf("Could not generate agent: %s", err), nil)
 							return
@@ -375,7 +375,7 @@ func (dash *DashboardPage) SetDisconnectFunc(f func()) {
 	dash.disconnectFunc = f
 }
 
-func (dash *DashboardPage) SetGenerateFunc(f func(string, *pb.GenerateAgentReq) (string, error)) {
+func (dash *DashboardPage) SetGenerateFunc(f func(string, string, string, string, bool, string, bool) (string, error)) {
 	dash.generateFunc = f
 }
 

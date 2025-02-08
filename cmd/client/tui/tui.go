@@ -176,9 +176,18 @@ func (app *App) initDashboard() {
 		app.Reset()
 	})
 
-	app.dashboard.SetGenerateFunc(func(path string, req *pb.GenerateAgentReq) (string, error) {
+	app.dashboard.SetGenerateFunc(func(path string, servers string, goos string, goarch string, obfuscate bool, proxy string, ignoreEnvProxy bool) (string, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
 		defer cancel()
+
+		req := &pb.GenerateAgentReq{
+			Servers:        servers,
+			GOOS:           goos,
+			GOARCH:         goarch,
+			Obfuscate:      obfuscate,
+			ProxyServer:    proxy,
+			IgnoreEnvProxy: ignoreEnvProxy,
+		}
 		r, err := app.operator.Client().GenerateAgent(ctx, req)
 		if err != nil {
 			return "", err
