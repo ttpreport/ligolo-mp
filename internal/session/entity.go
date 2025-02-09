@@ -274,10 +274,10 @@ func (sess *Session) remoteGetInfo() (protocol.InfoReplyPacket, error) {
 	}
 
 	stream, err := sess.Multiplex.Open()
-
 	if err != nil {
 		return protocol.InfoReplyPacket{}, err
 	}
+	defer stream.Close()
 
 	protocolEncoder := protocol.NewEncoder(stream)
 	protocolDecoder := protocol.NewDecoder(stream)
@@ -308,6 +308,7 @@ func (sess *Session) remoteDestroySession() error {
 	if err != nil {
 		return nil
 	}
+	defer stream.Close()
 
 	protocolEncoder := protocol.NewEncoder(stream)
 	if err := protocolEncoder.Encode(protocol.Envelope{
@@ -329,6 +330,8 @@ func (sess *Session) remoteCreateRedirector(id string, proto string, from string
 	if err != nil {
 		return err
 	}
+	defer stream.Close()
+
 	protocolEncoder := protocol.NewEncoder(stream)
 	protocolDecoder := protocol.NewDecoder(stream)
 
@@ -367,6 +370,7 @@ func (sess *Session) remoteRemoveRedirector(id string) error {
 	if err != nil {
 		return err
 	}
+	defer stream.Close()
 
 	protocolEncoder := protocol.NewEncoder(stream)
 	protocolDecoder := protocol.NewDecoder(stream)

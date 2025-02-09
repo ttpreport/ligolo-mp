@@ -6,21 +6,29 @@ import (
 	"sync"
 )
 
-func relay(src net.Conn, dst net.Conn, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	io.Copy(dst, src)
-}
-
 func StartRelay(src net.Conn, dst net.Conn) {
-	defer src.Close()
-	defer dst.Close()
+
+	done := make(chan struct{})
+	once := &sync.Once{}
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go relay(src, dst, &wg)
-	go relay(dst, src, &wg)
+	go func() {
+		defer wg.Done()
+		io.Copy(dst, src)
+		once.Do(func() { close(done) })
+	}()
+
+	go func() {
+		defer wg.Done()
+		io.Copy(src, dst)
+		once.Do(func() { close(done) })
+	}()
+
+	<-done
+	src.Close()
+	dst.Close()
 
 	wg.Wait()
 }

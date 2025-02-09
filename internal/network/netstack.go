@@ -9,23 +9,23 @@ import (
 	"sync"
 
 	"github.com/hashicorp/yamux"
-	"github.com/ttpreport/gvisor-ligolo/pkg/buffer"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/adapters/gonet"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/checksum"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/header"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/ipv4"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/network/ipv6"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/stack"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/icmp"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/raw"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/tcp"
-	"github.com/ttpreport/gvisor-ligolo/pkg/tcpip/transport/udp"
-	"github.com/ttpreport/gvisor-ligolo/pkg/waiter"
 	"github.com/ttpreport/ligolo-mp/internal/netstack/tun"
 	"github.com/ttpreport/ligolo-mp/internal/protocol"
 	"github.com/ttpreport/ligolo-mp/internal/relay"
 	"golang.org/x/sys/unix"
+	"gvisor.dev/gvisor/pkg/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
+	"gvisor.dev/gvisor/pkg/tcpip/checksum"
+	"gvisor.dev/gvisor/pkg/tcpip/header"
+	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
+	"gvisor.dev/gvisor/pkg/tcpip/network/ipv6"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/icmp"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/raw"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
+	"gvisor.dev/gvisor/pkg/waiter"
 )
 
 type TunConn struct {
@@ -84,7 +84,7 @@ type UDPConn struct {
 
 // ICMPConn represents a ICMP Packet Buffer
 type ICMPConn struct {
-	Request stack.PacketBufferPtr
+	Request stack.PacketBuffer
 }
 
 // NetStack is the structure used to store the connection pool and the gvisor network stack
@@ -130,6 +130,8 @@ func (s *NetStack) GetTunConn() <-chan TunConn {
 }
 
 func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, localRoutes []Route) {
+	defer localConn.Terminate(true)
+
 	var endpointID stack.TransportEndpointID
 	var prototransport uint8
 	var protonet uint8
@@ -155,11 +157,12 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 
 	yamuxConnectionSession, err := multiplex.Open()
 	if err != nil {
-		slog.Error("Packet handler encountered an error",
+		slog.Error("Packet handler encountered an error #1",
 			slog.Any("error", err),
 		)
 		return
 	}
+	defer yamuxConnectionSession.Close()
 
 	address := endpointID.LocalAddress.String()
 	for _, localRoute := range localRoutes {
@@ -189,7 +192,7 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 		Type:    protocol.MessageConnectRequest,
 		Payload: connectPacket,
 	}); err != nil {
-		slog.Error("Packet handler encountered an error",
+		slog.Error("Packet handler encountered an error #2",
 			slog.Any("error", err),
 		)
 		return
@@ -197,7 +200,7 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 
 	if err := protocolDecoder.Decode(); err != nil {
 		if err != io.EOF {
-			slog.Error("Packet handler encountered an error",
+			slog.Error("Packet handler encountered an error #3",
 				slog.Any("error", err),
 			)
 		}
@@ -207,39 +210,30 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 	response := protocolDecoder.Envelope.Payload
 	reply := response.(protocol.ConnectResponsePacket)
 	if reply.Established {
-		go func() {
-			var wq waiter.Queue
-			if localConn.IsTCP() {
-				ep, iperr := localConn.GetTCP().Request.CreateEndpoint(&wq)
-				if iperr != nil {
-					slog.Error("Packet handler encountered an error",
-						slog.Any("error", iperr),
-					)
-					localConn.Terminate(true)
-					return
-				}
-				gonetConn := gonet.NewTCPConn(&wq, ep)
-				go relay.StartRelay(yamuxConnectionSession, gonetConn)
-
-			} else if localConn.IsUDP() {
-				ep, iperr := localConn.GetUDP().Request.CreateEndpoint(&wq)
-				if iperr != nil {
-					slog.Error("Packet handler encountered an error",
-						slog.Any("error", iperr),
-					)
-					localConn.Terminate(false)
-					return
-				}
-
-				gonetConn := gonet.NewUDPConn(ns.stack, &wq, ep)
-				go relay.StartRelay(yamuxConnectionSession, gonetConn)
+		var wq waiter.Queue
+		if localConn.IsTCP() {
+			ep, iperr := localConn.GetTCP().Request.CreateEndpoint(&wq)
+			if iperr != nil {
+				slog.Error("Packet handler encountered an error #4",
+					slog.Any("error", iperr),
+				)
+				return
+			}
+			gonetConn := gonet.NewTCPConn(&wq, ep)
+			relay.StartRelay(yamuxConnectionSession, gonetConn)
+		} else if localConn.IsUDP() {
+			ep, iperr := localConn.GetUDP().Request.CreateEndpoint(&wq)
+			if iperr != nil {
+				slog.Error("Packet handler encountered an error #5",
+					slog.Any("error", iperr),
+				)
+				return
 			}
 
-		}()
-	} else {
-		localConn.Terminate(reply.Reset)
+			gonetConn := gonet.NewUDPConn(&wq, ep)
+			relay.StartRelay(yamuxConnectionSession, gonetConn)
+		}
 	}
-
 }
 
 // icmpResponder handle ICMP packets coming to gvisor/netstack.
@@ -306,7 +300,7 @@ func (ns *NetStack) icmpResponder() (chan bool, error) {
 					packetbuff.NetworkHeader().Consume(hlen)
 					tunConn := TunConn{
 						Protocol: icmp.ProtocolNumber4,
-						Handler:  ICMPConn{Request: packetbuff},
+						Handler:  ICMPConn{Request: *packetbuff},
 					}
 
 					ns.Lock()
@@ -359,6 +353,8 @@ func (ns *NetStack) handleICMP(localConn TunConn, multiplex *yamux.Session, loca
 			)
 			return
 		}
+		defer yamuxConnectionSession.Close()
+
 		slog.Debug("Checking if destination is alive",
 			slog.Any("destination", address),
 		)
@@ -389,7 +385,7 @@ func (ns *NetStack) handleICMP(localConn TunConn, multiplex *yamux.Session, loca
 		reply := response.(protocol.HostPingResponsePacket)
 		if reply.Alive {
 			slog.Debug("Host is alive, sending reply")
-			ns.ProcessICMP(pkt)
+			ns.ProcessICMP(&pkt)
 
 		}
 
@@ -399,7 +395,7 @@ func (ns *NetStack) handleICMP(localConn TunConn, multiplex *yamux.Session, loca
 
 // ProcessICMP send back a ICMP echo reply from after receiving a echo request.
 // This code come mostly from pkg/tcpip/network/ipv4/icmp.go
-func (ns *NetStack) ProcessICMP(pkt stack.PacketBufferPtr) {
+func (ns *NetStack) ProcessICMP(pkt *stack.PacketBuffer) {
 	// (gvisor) pkg/tcpip/network/ipv4/icmp.go:174 - handleICMP
 
 	// ICMP packets don't have their TransportHeader fields set. See

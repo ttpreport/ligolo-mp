@@ -7,12 +7,12 @@ replace github.com/ttpreport/ligolo-mp => ../../
 require (
 	github.com/hashicorp/yamux v0.1.0
 	github.com/ttpreport/ligolo-mp v0.0.0-20230726084436-8bfe194b0948
-	golang.org/x/net v0.20.0
+	golang.org/x/net v0.30.0
 )
 
 require (
 	github.com/go-ping/ping v1.1.0 // indirect
 	github.com/google/uuid v1.5.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
 )

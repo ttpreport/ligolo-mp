@@ -21,7 +21,7 @@ func main() {
 	var verboseFlag = flag.Bool("v", false, "enable verbose mode")
 	var listenInterface = flag.String("agent-addr", "0.0.0.0:11601", "listening address")
 	var maxInflight = flag.Int("max-inflight", 4096, "max inflight TCP connections")
-	var maxConnectionHandler = flag.Int("max-connection", 4096, "per tunnel connection pool size")
+	var maxConnectionHandler = flag.Int("max-connection", 1024, "per tunnel connection pool size")
 	var operatorAddr = flag.String("operator-addr", "0.0.0.0:58008", "Address for operators connections")
 	var unpack = flag.Bool("unpack", false, "Unpack server files")
 	var initOperators = flag.Bool("init-operators", false, "Initialize operators (creates a first admin if none exists)")

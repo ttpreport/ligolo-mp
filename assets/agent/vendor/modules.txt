@@ -13,7 +13,7 @@ github.com/ttpreport/ligolo-mp/internal/netstack/neterror
 github.com/ttpreport/ligolo-mp/internal/netstack/smartping
 github.com/ttpreport/ligolo-mp/internal/protocol
 github.com/ttpreport/ligolo-mp/internal/relay
-# golang.org/x/net v0.20.0
+# golang.org/x/net v0.30.0
 ## explicit; go 1.18
 golang.org/x/net/bpf
 golang.org/x/net/icmp
@@ -23,10 +23,10 @@ golang.org/x/net/internal/socks
 golang.org/x/net/ipv4
 golang.org/x/net/ipv6
 golang.org/x/net/proxy
-# golang.org/x/sync v0.5.0
+# golang.org/x/sync v0.8.0
 ## explicit; go 1.18
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.17.0
+# golang.org/x/sys v0.26.0
 ## explicit; go 1.18
 golang.org/x/sys/unix
 golang.org/x/sys/windows
