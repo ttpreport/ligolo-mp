@@ -110,12 +110,9 @@ func (s *NetStack) SetConnPool(connPool *ConnPool) {
 
 // Cleans up after gVisor. Couldn't find a better way
 func (s *NetStack) Destroy() error {
+	s.pool.Close()
 	s.closeChan <- true
-
-	if err := unix.Close(s.fd); err != nil {
-		return err
-	}
-
+	unix.Close(s.fd)
 	s.stack.Destroy()
 
 	return nil
@@ -130,8 +127,6 @@ func (s *NetStack) GetTunConn() <-chan TunConn {
 }
 
 func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, localRoutes []Route) {
-	defer localConn.Terminate(true)
-
 	var endpointID stack.TransportEndpointID
 	var prototransport uint8
 	var protonet uint8
@@ -155,15 +150,6 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 		protonet = protocol.Networkv6
 	}
 
-	yamuxConnectionSession, err := multiplex.Open()
-	if err != nil {
-		slog.Error("Packet handler encountered an error #1",
-			slog.Any("error", err),
-		)
-		return
-	}
-	defer yamuxConnectionSession.Close()
-
 	address := endpointID.LocalAddress.String()
 	for _, localRoute := range localRoutes {
 		ip := net.ParseIP(address)
@@ -184,6 +170,15 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 		Address:   address,
 		Port:      endpointID.LocalPort,
 	}
+
+	yamuxConnectionSession, err := multiplex.Open()
+	if err != nil {
+		slog.Error("Packet handler encountered an error #1",
+			slog.Any("error", err),
+		)
+		return
+	}
+	defer yamuxConnectionSession.Close()
 
 	protocolEncoder := protocol.NewEncoder(yamuxConnectionSession)
 	protocolDecoder := protocol.NewDecoder(yamuxConnectionSession)
@@ -210,6 +205,7 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 	response := protocolDecoder.Envelope.Payload
 	reply := response.(protocol.ConnectResponsePacket)
 	if reply.Established {
+		defer localConn.Terminate(true)
 		var wq waiter.Queue
 		if localConn.IsTCP() {
 			ep, iperr := localConn.GetTCP().Request.CreateEndpoint(&wq)
@@ -221,7 +217,9 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 			}
 			gonetConn := gonet.NewTCPConn(&wq, ep)
 			relay.StartRelay(yamuxConnectionSession, gonetConn)
+			ep.Abort() // I don't like this, but TIME_WAIT overflows within gvisor otherwise -- gotta investigate
 		} else if localConn.IsUDP() {
+			defer localConn.Terminate(false)
 			ep, iperr := localConn.GetUDP().Request.CreateEndpoint(&wq)
 			if iperr != nil {
 				slog.Error("Packet handler encountered an error #5",
@@ -233,6 +231,8 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 			gonetConn := gonet.NewUDPConn(&wq, ep)
 			relay.StartRelay(yamuxConnectionSession, gonetConn)
 		}
+	} else {
+		localConn.Terminate(reply.Reset)
 	}
 }
 

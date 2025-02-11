@@ -89,10 +89,7 @@ func (ss *SessionService) KillSession(sessID string) error {
 		return fmt.Errorf("session '%s' does not exist", sessID)
 	}
 
-	if err := sess.Disconnect(); err != nil {
-		slog.Warn("session disconnect encountered an error", slog.Any("error", err))
-	}
-
+	sess.Disconnect()
 	sess.CleanUp()
 
 	return ss.repo.Remove(sess)

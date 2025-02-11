@@ -147,7 +147,7 @@ func connect(conn net.Conn, config *tls.Config) error {
 		if err != nil {
 			return err
 		}
-		go handleConn(conn) // this is leaking, but should be okay
+		go handleConn(conn)
 	}
 }
 
@@ -159,11 +159,9 @@ func handleConn(conn net.Conn) {
 
 	e := decoder.Envelope.Payload
 	switch decoder.Envelope.Type {
-
 	case protocol.MessageConnectRequest:
 		connRequest := e.(protocol.ConnectRequestPacket)
 		encoder := protocol.NewEncoder(conn)
-
 		var network string
 		if connRequest.Transport == protocol.TransportTCP {
 			network = "tcp"
@@ -176,14 +174,12 @@ func handleConn(conn net.Conn) {
 			network += "6"
 		}
 
-		var d net.Dialer
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		targetConn, err := d.DialContext(ctx, network, fmt.Sprintf("%s:%d", connRequest.Address, connRequest.Port))
 		defer cancel()
-
+		var d net.Dialer
+		targetConn, err := d.DialContext(ctx, network, fmt.Sprintf("%s:%d", connRequest.Address, connRequest.Port))
 		var connectPacket protocol.ConnectResponsePacket
 		if err != nil {
-
 			var serr syscall.Errno
 			if errors.As(err, &serr) {
 				// Magic trick! If the error syscall indicate that the system responded, send back a RST packet!
@@ -196,12 +192,16 @@ func handleConn(conn net.Conn) {
 		} else {
 			connectPacket.Established = true
 		}
-		encoder.Encode(protocol.Envelope{
+
+		if err = encoder.Encode(protocol.Envelope{
 			Type:    protocol.MessageConnectResponse,
 			Payload: connectPacket,
-		})
+		}); err != nil {
+			return
+		}
+
 		if connectPacket.Established {
-			relay.StartRelay(targetConn, conn)
+			relay.StartRelay(conn, targetConn)
 		}
 	case protocol.MessageHostPingRequest:
 		pingRequest := e.(protocol.HostPingRequestPacket)

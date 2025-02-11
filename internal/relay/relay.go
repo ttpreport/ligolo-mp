@@ -7,7 +7,6 @@ import (
 )
 
 func StartRelay(src net.Conn, dst net.Conn) {
-
 	done := make(chan struct{})
 	once := &sync.Once{}
 
@@ -27,8 +26,8 @@ func StartRelay(src net.Conn, dst net.Conn) {
 	}()
 
 	<-done
-	src.Close()
 	dst.Close()
+	src.Close()
 
 	wg.Wait()
 }

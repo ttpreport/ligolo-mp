@@ -8,8 +8,6 @@ require (
 	github.com/go-ping/ping v1.1.0
 	github.com/hashicorp/yamux v0.1.0
 	golang.org/x/net v0.30.0 // indirect
-	golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224 // indirect
-	golang.zx2c4.com/wireguard v0.0.0-20220703234212-c31a7b1ab478
 )
 
 require (

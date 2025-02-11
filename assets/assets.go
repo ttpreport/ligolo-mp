@@ -42,12 +42,17 @@ func NewAssetsService(cfg *config.Config) *AssetsService {
 }
 
 func (assets *AssetsService) Unpack() error {
+	err := os.RemoveAll(assets.config.GetAssetsDir())
+	if err != nil {
+		return err
+	}
+
 	a, err := FS.ReadFile("artifacts/go.zip")
 	if err != nil {
 		return err
 	}
 
-	_, err = unzipBuf(a, assets.config.GetRootAppDir())
+	_, err = unzipBuf(a, assets.config.GetAssetsDir())
 	if err != nil {
 		return err
 	}
@@ -109,7 +114,7 @@ func (assets *AssetsService) renderAgent(proxyServer string, servers string, CAC
 }
 
 func (assets *AssetsService) setupAgentDir() (string, error) {
-	agentDir := filepath.Join(assets.config.GetRootAppDir(), "agents", xid.New().String())
+	agentDir := filepath.Join(assets.config.GetAssetsDir(), "agents", xid.New().String())
 
 	if _, err := os.Stat(agentDir); os.IsNotExist(err) {
 		if err = os.MkdirAll(agentDir, 0700); err != nil {
@@ -159,9 +164,9 @@ func (assets *AssetsService) CompileAgent(goos string, goarch string, obfuscate 
 		CGO:        "0",
 		GOOS:       goos,
 		GOARCH:     goarch,
-		GOROOT:     gogo.GetGoRootDir(assets.config.GetRootAppDir()),
-		GOCACHE:    gogo.GetGoCache(assets.config.GetRootAppDir()),
-		GOMODCACHE: gogo.GetGoModCache(assets.config.GetRootAppDir()),
+		GOROOT:     gogo.GetGoRootDir(assets.config.GetAssetsDir()),
+		GOCACHE:    gogo.GetGoCache(assets.config.GetAssetsDir()),
+		GOMODCACHE: gogo.GetGoModCache(assets.config.GetAssetsDir()),
 		ProjectDir: agentDir,
 		Obfuscate:  obfuscate,
 		GOGARBLE:   "*",

@@ -149,13 +149,6 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.7.0
 ## explicit; go 1.18
 golang.org/x/time/rate
-# golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224
-## explicit; go 1.17
-golang.zx2c4.com/wintun
-# golang.zx2c4.com/wireguard v0.0.0-20220703234212-c31a7b1ab478
-## explicit; go 1.18
-golang.zx2c4.com/wireguard/rwcancel
-golang.zx2c4.com/wireguard/tun
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
