@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"slices"
 	"sync"
 
 	"github.com/ttpreport/ligolo-mp/assets"
@@ -25,7 +26,7 @@ import (
 type ligoloServer struct {
 	pb.UnimplementedLigoloServer
 	connMutex     sync.RWMutex
-	connections   map[string]*ligoloConnection
+	connections   []*ligoloConnection
 	ligoloConfig  *config.Config
 	sessService   *session.SessionService
 	certService   *certificate.CertificateService
@@ -34,8 +35,9 @@ type ligoloServer struct {
 }
 
 type ligoloConnection struct {
-	Stream pb.Ligolo_JoinServer
-	kill   chan bool
+	Operator *operator.Operator
+	Stream   pb.Ligolo_JoinServer
+	kill     chan bool
 }
 
 func (c *ligoloConnection) Kill() <-chan bool {
@@ -46,10 +48,11 @@ func (c *ligoloConnection) Terminate() {
 	c.kill <- true
 }
 
-func NewLigoloConnection(stream pb.Ligolo_JoinServer) *ligoloConnection {
+func NewLigoloConnection(operator *operator.Operator, stream pb.Ligolo_JoinServer) *ligoloConnection {
 	return &ligoloConnection{
-		Stream: stream,
-		kill:   make(chan bool),
+		Operator: operator,
+		Stream:   stream,
+		kill:     make(chan bool),
 	}
 }
 
@@ -60,15 +63,12 @@ func (s *ligoloServer) Join(in *pb.Empty, stream pb.Ligolo_JoinServer) error {
 		return err
 	}
 
-	if _, ok := s.connections[oper.Name]; ok {
-		return errors.New("operator already connected")
-	}
-
 	events.Publish(events.OK, "%s joined the game", oper.Name)
 
 	s.connMutex.Lock()
-	connection := NewLigoloConnection(stream)
-	s.connections[oper.Name] = connection
+	connection := NewLigoloConnection(oper, stream)
+	s.connections = append(s.connections, connection)
+	var operNum = len(s.connections)
 	s.connMutex.Unlock()
 
 	select {
@@ -79,7 +79,7 @@ func (s *ligoloServer) Join(in *pb.Empty, stream pb.Ligolo_JoinServer) error {
 	}
 
 	s.connMutex.Lock()
-	delete(s.connections, oper.Name)
+	s.connections = slices.Delete(s.connections, operNum-1, operNum)
 	s.connMutex.Unlock()
 
 	events.Publish(events.ERROR, "%s has left the game", oper.Name)
@@ -280,8 +280,10 @@ func (s *ligoloServer) GetOperators(ctx context.Context, in *pb.Empty) (*pb.GetO
 	for _, oper := range opers {
 		pbOper := oper.Proto()
 
-		if _, ok := s.connections[oper.Name]; ok {
-			pbOper.IsOnline = true
+		for _, conn := range s.connections {
+			if conn.Operator.Name == oper.Name {
+				pbOper.IsOnline = true
+			}
 		}
 
 		pbOpers = append(pbOpers, pbOper)
@@ -382,8 +384,10 @@ func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (
 		return nil, err
 	}
 
-	if _, ok := s.connections[targetOper.Name]; ok {
-		s.connections[targetOper.Name].Terminate()
+	for _, conn := range s.connections {
+		if conn.Operator.Name == targetOper.Name {
+			conn.Terminate()
+		}
 	}
 
 	return &pb.Empty{}, nil
@@ -577,7 +581,6 @@ func Run(config *config.Config, certService *certificate.CertificateService, ses
 		},
 	}
 	ligoloServer := &ligoloServer{
-		connections:   make(map[string]*ligoloConnection),
 		ligoloConfig:  config,
 		sessService:   sessService,
 		certService:   certService,
@@ -587,7 +590,7 @@ func Run(config *config.Config, certService *certificate.CertificateService, ses
 	grpcServer := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)), grpc.UnaryInterceptor(ligoloServer.unaryAuthInterceptor))
 
 	pb.RegisterLigoloServer(grpcServer, ligoloServer)
-	slog.Info("server listening", slog.Any("addr", lis.Addr()))
+	slog.Info("Operator server started", slog.Any("addr", lis.Addr()))
 
 	go ligoloServer.HandleEvents()
 

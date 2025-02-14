@@ -41,6 +41,17 @@ func (cfg *Config) GetAssetsDir() string {
 	return dir
 }
 
+func (cfg *Config) GetStorageDir() string {
+	dir := path.Join(cfg.GetRootAppDir(), "storage")
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return dir
+}
+
 func (cfg *Config) Proto() *pb.Config {
 	return &pb.Config{
 		OperatorServer: cfg.OperatorAddr,

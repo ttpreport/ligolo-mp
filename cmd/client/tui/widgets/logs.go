@@ -3,11 +3,9 @@ package widgets
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/rivo/tview"
 	"github.com/ttpreport/ligolo-mp/cmd/client/tui/style"
-	"github.com/ttpreport/ligolo-mp/internal/events"
 )
 
 type LogsWidget struct {
@@ -19,7 +17,7 @@ func NewLogsWidget() *LogsWidget {
 		TextView: *tview.NewTextView(),
 	}
 
-	widget.SetTextAlign(tview.AlignTop).SetTextColor(style.FgColor).SetDynamicColors(true)
+	widget.SetTextAlign(tview.AlignTop).SetDynamicColors(true)
 	widget.SetBorder(true)
 	widget.SetBorderColor(style.BorderColor)
 	widget.SetTitleColor(style.FgColor)
@@ -29,11 +27,11 @@ func NewLogsWidget() *LogsWidget {
 	return widget
 }
 
-func (widget *LogsWidget) Append(severity events.EventType, data string) {
-	currentLog := widget.GetText(true)
-	date := time.Now().UTC().Format(time.RFC3339)
-	newLog := fmt.Sprintf("%s (%s) | %s\n%s", date, severity, data, currentLog)
-	widget.SetText(newLog)
+func (widget *LogsWidget) Write(p []byte) (n int, err error) {
+	currentText := widget.GetText(false)
+	newText := fmt.Sprintf("%s%s", string(p), currentText)
+	widget.SetText(newText)
+	return len(p), nil
 }
 
 func (widget *LogsWidget) Truncate() {

@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -23,7 +24,7 @@ type App struct {
 	root         *tview.Flex
 	layout       *tview.Flex
 	pages        *tview.Pages
-	logs         *widgets.LogsWidget
+	Logs         *widgets.LogsWidget
 	credentials  *pages.CredentialsPage
 	dashboard    *pages.DashboardPage
 	admin        *pages.AdminPage
@@ -41,7 +42,7 @@ func NewApp(operService *operator.OperatorService) *App {
 		root:        tview.NewFlex(),
 		layout:      tview.NewFlex(),
 		pages:       tview.NewPages(),
-		logs:        widgets.NewLogsWidget(),
+		Logs:        widgets.NewLogsWidget(),
 		credentials: pages.NewCredentialsPage(),
 		dashboard:   pages.NewDashboardPage(),
 		admin:       pages.NewAdminPage(),
@@ -59,7 +60,7 @@ func NewApp(operService *operator.OperatorService) *App {
 
 	app.layout.SetDirection(tview.FlexRow)
 	app.layout.AddItem(app.pages, 0, 80, false)
-	app.layout.AddItem(app.logs, 0, 20, true)
+	app.layout.AddItem(app.Logs, 0, 20, true)
 
 	app.SwitchToPage(app.credentials)
 
@@ -169,11 +170,6 @@ func (app *App) initDashboard() {
 		}
 
 		return r.Sessions, nil
-	})
-
-	app.dashboard.SetDisconnectFunc(func() {
-		app.Disconnect()
-		app.Reset()
 	})
 
 	app.dashboard.SetGenerateFunc(func(path string, servers string, goos string, goarch string, obfuscate bool, proxy string, ignoreEnvProxy bool) (string, error) {
@@ -414,11 +410,6 @@ func (app *App) initAdmin() {
 		return err
 	})
 
-	app.admin.SetDisconnectFunc(func() {
-		app.Disconnect()
-		app.Reset()
-	})
-
 	app.admin.SetMetadataFunc(func() (*pb.GetMetadataResp, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
@@ -434,10 +425,6 @@ func (app *App) initAdmin() {
 	app.pages.AddPage(app.credentials.GetID(), app.credentials, true, false)
 }
 
-func (app *App) log(severity events.EventType, data string) {
-	app.logs.Append(severity, data)
-}
-
 func (app *App) HandleOperatorEvents() {
 	defer func() {
 		app.Disconnect()
@@ -447,7 +434,7 @@ func (app *App) HandleOperatorEvents() {
 
 	eventStream, err := app.operator.Client().Join(context.Background(), &pb.Empty{})
 	if err != nil {
-		app.log(events.ERROR, fmt.Sprintf("Could not join event stream: %s", err))
+		slog.Error(fmt.Sprintf("Could not join event stream: %s", err))
 		return
 	}
 
@@ -460,7 +447,7 @@ func (app *App) HandleOperatorEvents() {
 		app.dashboard.RefreshData()
 		app.admin.RefreshData()
 
-		app.log(events.EventType(event.Type), event.Data)
+		slog.Log(context.Background(), events.EventType(event.Type).Slog(), event.Data)
 	}
 }
 
@@ -471,7 +458,7 @@ func (app *App) IsConnected() bool {
 func (app *App) Disconnect() {
 	if app.IsConnected() {
 		app.operator.Disconnect()
-		app.log(events.ERROR, fmt.Sprintf("Disconnected from %s", app.operator.Server))
+		slog.Error(fmt.Sprintf("Disconnected from %s", app.operator.Server))
 	}
 
 	app.operator = nil
@@ -482,15 +469,15 @@ func (app *App) SwitchOperator(oper *operator.Operator) error {
 		app.Disconnect()
 	}
 
-	app.log(events.OK, fmt.Sprintf("Connecting to %s as %s", oper.Server, oper.Name))
+	slog.Info(fmt.Sprintf("Connecting to %s as %s", oper.Server, oper.Name))
 
 	err := oper.Connect()
 	if err != nil {
-		app.log(events.OK, fmt.Sprintf("Could not connect to %s: %s", oper.Server, err))
+		slog.Error(fmt.Sprintf("Could not connect to %s: %s", oper.Server, err))
 		return err
 	}
 
-	app.log(events.OK, fmt.Sprintf("Connected to %s", oper.Server))
+	slog.Info(fmt.Sprintf("Connected to %s", oper.Server))
 
 	app.operator = oper
 	go app.HandleOperatorEvents()

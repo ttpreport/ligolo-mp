@@ -26,7 +26,6 @@ type AdminPage struct {
 	getOperators    func() ([]*pb.Operator, error)
 	getCertificates func() ([]*pb.Cert, error)
 	switchback      func()
-	disconnect      func()
 
 	exportOperator  func(string, string) (string, error)
 	addOperator     func(string, bool, string) (*pb.Operator, *pb.OperatorCredentials, error)
@@ -186,7 +185,6 @@ func (admin *AdminPage) GetNavBar() []widgets.NavBarElem {
 	return []widgets.NavBarElem{
 		widgets.NewNavBarElem(tcell.KeyCtrlA, "Back"),
 		widgets.NewNavBarElem(tcell.KeyCtrlN, "New operator"),
-		widgets.NewNavBarElem(tcell.KeyCtrlD, "Disconnect"),
 	}
 }
 
@@ -211,8 +209,6 @@ func (admin *AdminPage) InputHandler() func(event *tcell.EventKey, setFocus func
 				}
 			case tcell.KeyCtrlA:
 				admin.switchback()
-			case tcell.KeyCtrlD:
-				admin.disconnect()
 			case tcell.KeyCtrlN:
 				gen := forms.NewOperatorForm()
 				gen.SetSubmitFunc(func(name string, isAdmin bool, server string) {
@@ -327,10 +323,6 @@ func (admin *AdminPage) SetOperatorsFunc(f func() ([]*pb.Operator, error)) {
 
 func (admin *AdminPage) SetCertificatesFunc(f func() ([]*pb.Cert, error)) {
 	admin.getCertificates = f
-}
-
-func (dash *AdminPage) SetDisconnectFunc(f func()) {
-	dash.disconnect = f
 }
 
 func (admin *AdminPage) ShowError(text string, done func()) {

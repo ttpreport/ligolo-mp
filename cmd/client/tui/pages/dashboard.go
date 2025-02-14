@@ -26,7 +26,6 @@ type DashboardPage struct {
 	getData                     func() ([]*pb.Session, error)
 	getMetadata                 func() (*pb.GetMetadataResp, error)
 	adminFunc                   func()
-	disconnectFunc              func()
 	generateFunc                func(path string, servers string, goos string, goarch string, obfuscate bool, proxy string, ignoreEnvProxy bool) (string, error)
 	sessionStartFunc            func(*pb.Session) error
 	sessionStopFunc             func(*pb.Session) error
@@ -307,8 +306,6 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 						break
 					}
 				}
-			case tcell.KeyCtrlD:
-				dash.disconnectFunc()
 			case tcell.KeyCtrlN:
 				gen := forms.NewGenerateForm()
 				gen.SetSubmitFunc(func(path string, servers string, goos string, goarch string, obfuscate bool, proxy string, ignoreEnvProxy bool) {
@@ -369,10 +366,6 @@ func (dash *DashboardPage) SetDataFunc(f func() ([]*pb.Session, error)) {
 
 func (dash *DashboardPage) SetMetadataFunc(f func() (*pb.GetMetadataResp, error)) {
 	dash.getMetadata = f
-}
-
-func (dash *DashboardPage) SetDisconnectFunc(f func()) {
-	dash.disconnectFunc = f
 }
 
 func (dash *DashboardPage) SetGenerateFunc(f func(string, string, string, string, bool, string, bool) (string, error)) {
@@ -436,7 +429,6 @@ func (dash *DashboardPage) GetNavBar() []widgets.NavBarElem {
 	navbar := []widgets.NavBarElem{
 		widgets.NewNavBarElem(tcell.KeyCtrlN, "Generate"),
 		widgets.NewNavBarElem(tcell.KeyTab, "Switch pane"),
-		widgets.NewNavBarElem(tcell.KeyCtrlD, "Disconnect"),
 	}
 
 	if dash.operator.IsAdmin {

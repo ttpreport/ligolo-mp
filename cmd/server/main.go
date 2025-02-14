@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/ttpreport/ligolo-mp/assets"
+	"github.com/ttpreport/ligolo-mp/cmd/client/tui"
 	"github.com/ttpreport/ligolo-mp/cmd/server/agents"
 	"github.com/ttpreport/ligolo-mp/cmd/server/rpc"
 	"github.com/ttpreport/ligolo-mp/internal/certificate"
@@ -15,61 +16,51 @@ import (
 	"github.com/ttpreport/ligolo-mp/internal/operator"
 	"github.com/ttpreport/ligolo-mp/internal/session"
 	"github.com/ttpreport/ligolo-mp/internal/storage"
+	"github.com/ttpreport/ligolo-mp/pkg/logger"
 )
 
 func main() {
-	var verboseFlag = flag.Bool("v", false, "enable verbose mode")
+	var daemon = flag.Bool("daemon", false, "enable daemon mode")
+	var verbose = flag.Bool("v", false, "enable verbose mode")
 	var listenInterface = flag.String("agent-addr", "0.0.0.0:11601", "listening address")
 	var maxInflight = flag.Int("max-inflight", 4096, "max inflight TCP connections")
 	var maxConnectionHandler = flag.Int("max-connection", 1024, "per tunnel connection pool size")
 	var operatorAddr = flag.String("operator-addr", "0.0.0.0:58008", "Address for operators connections")
 	var unpack = flag.Bool("unpack", false, "Unpack server files")
-	var initOperators = flag.Bool("init-operators", false, "Initialize operators (creates a first admin if none exists)")
 
 	flag.Parse()
 
 	cfg := &config.Config{
 		Environment:          "server",
-		Verbose:              *verboseFlag,
+		Verbose:              *verbose,
 		ListenInterface:      *listenInterface,
 		MaxInFlight:          *maxInflight,
 		MaxConnectionHandler: *maxConnectionHandler,
 		OperatorAddr:         *operatorAddr,
 	}
 
-	storage, err := storage.New(cfg.GetRootAppDir())
-
+	db, err := storage.New(cfg.GetStorageDir())
 	if err != nil {
 		panic(fmt.Sprintf("could not connect to storage: %v", err))
 	}
+	defer db.Close()
 
-	if *verboseFlag {
-		lvl := new(slog.LevelVar)
-		lvl.Set(slog.LevelDebug)
-
-		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: lvl,
-		}))
-
-		slog.SetDefault(logger)
-	}
-
-	certRepo, err := certificate.NewCertificateRepository(storage)
+	certRepo, err := certificate.NewCertificateRepository(db)
 	if err != nil {
 		panic(err)
 	}
 
-	crlRepo, err := crl.NewCRLRepository(storage)
+	crlRepo, err := crl.NewCRLRepository(db)
 	if err != nil {
 		panic(err)
 	}
 
-	sessRepo, err := session.NewSessionRepository(storage)
+	sessRepo, err := session.NewSessionRepository(db)
 	if err != nil {
 		panic(err)
 	}
 
-	operRepo, err := operator.NewOperatorRepository(storage)
+	operRepo, err := operator.NewOperatorRepository(db)
 	if err != nil {
 		panic(err)
 	}
@@ -84,36 +75,16 @@ func main() {
 		panic(err)
 	}
 
-	if *initOperators {
-		operators, err := operService.AllOperators()
+	operators, err := operService.AllOperators()
+	if err != nil {
+		panic(err)
+	}
+
+	if len(operators) < 1 {
+		_, err := operService.NewOperator("admin", true, *operatorAddr)
 		if err != nil {
 			panic(err)
 		}
-
-		if len(operators) < 1 {
-			admin, err := operService.NewOperator("admin", true, *operatorAddr)
-			if err != nil {
-				panic(err)
-			}
-
-			cwd, err := os.Getwd()
-			if err != nil {
-				panic(err)
-			}
-
-			path, err := admin.ToFile(cwd)
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Printf("Admin's config saved to: %s", path)
-
-			return
-		}
-
-		fmt.Printf("First admin account already initialized")
-
-		return
 	}
 
 	if *unpack {
@@ -128,7 +99,33 @@ func main() {
 		panic(err)
 	}
 
-	quit := make(chan error, 1)
+	var app *tui.App
+	loggingOpts := &slog.HandlerOptions{}
+	quit := make(chan error)
+
+	if *verbose {
+		lvl := new(slog.LevelVar)
+		lvl.Set(slog.LevelDebug)
+		loggingOpts = &slog.HandlerOptions{
+			Level: lvl,
+		}
+	} else {
+		lvl := new(slog.LevelVar)
+		lvl.Set(slog.LevelInfo)
+		loggingOpts = &slog.HandlerOptions{
+			Level: lvl,
+		}
+	}
+
+	if *daemon {
+		logger := slog.New(slog.NewTextHandler(os.Stdout, loggingOpts))
+		slog.SetDefault(logger)
+	} else {
+		app = tui.NewApp(operService)
+
+		logger := slog.New(logger.NewLogHandler(app.Logs, loggingOpts))
+		slog.SetDefault(logger)
+	}
 
 	go func() {
 		quit <- agents.Run(cfg, certService, sessService)
@@ -137,10 +134,11 @@ func main() {
 		quit <- rpc.Run(cfg, certService, sessService, operService, assetsService)
 	}()
 
-	slog.Info("server started")
-
-	ret := <-quit
-	if ret != nil {
-		slog.Info("server terminated", slog.Any("exit", ret))
+	if *daemon {
+		<-quit
+	} else {
+		app.Run()
 	}
+
+	slog.Info("Ligolo-mp instance terminated")
 }

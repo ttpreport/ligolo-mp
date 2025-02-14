@@ -1,6 +1,9 @@
 package events
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+)
 
 type EventType int
 
@@ -14,6 +17,19 @@ var eventTypeNames = [...]string{"INFO", "WARNING", "ERROR"}
 
 func (t EventType) String() string {
 	return eventTypeNames[t]
+}
+
+func (t EventType) Slog() slog.Level {
+	switch t {
+	case OK:
+		return slog.LevelInfo
+	case WARNING:
+		return slog.LevelWarn
+	case ERROR:
+		return slog.LevelError
+	}
+
+	return slog.LevelInfo
 }
 
 type Event struct {
