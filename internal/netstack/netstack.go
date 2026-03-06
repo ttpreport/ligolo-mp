@@ -301,26 +301,34 @@ func (ns *NetStack) icmpResponder() (chan bool, error) {
 						Handler:  ICMPConn{Request: *packetbuff},
 					}
 
-					ns.Lock()
-					if ns.pool == nil || ns.pool.Closed() {
-						ns.Unlock()
-						continue // If connPool is closed, ignore packet.
+					if !ns.tryAddICMP(tunConn) {
+						continue
 					}
-
-					if err := ns.pool.Add(tunConn); err != nil {
-						ns.Unlock()
-						slog.Error("ICMP responder encountered an error",
-							slog.Any("error", err),
-						)
-						continue // Unknown error, continue...
-					}
-					ns.Unlock()
 				}
 			}
 
 		}
 	}()
 	return quit, nil
+}
+
+// tryAddICMP adds a TunConn to the connection pool under the NetStack mutex.
+// Extracting the locked section to a helper ensures defer fires per-iteration,
+// not at goroutine exit, and prevents the mutex from leaking on panic.
+func (ns *NetStack) tryAddICMP(tunConn TunConn) bool {
+	ns.Lock()
+	defer ns.Unlock()
+
+	if ns.pool == nil || ns.pool.Closed() {
+		return false
+	}
+
+	if err := ns.pool.Add(tunConn); err != nil {
+		slog.Error("ICMP responder encountered an error", slog.Any("error", err))
+		return false
+	}
+
+	return true
 }
 
 // handleICMP process incoming ICMP packets and, depending on the target host status, respond a ICMP ECHO Reply

@@ -96,7 +96,12 @@ func (s *ligoloServer) HandleEvents() {
 			Data: event.Data,
 		}
 
-		for _, connection := range s.connections {
+		s.connMutex.RLock()
+		conns := make([]*ligoloConnection, len(s.connections))
+		copy(conns, s.connections)
+		s.connMutex.RUnlock()
+
+		for _, connection := range conns {
 			slog.Debug("trying to send event to operator")
 			if err := connection.Stream.Send(pbEvent); err != nil {
 				slog.Error("Sending event to operator failed", slog.Any("reason", err))
@@ -336,11 +341,16 @@ func (s *ligoloServer) GetOperators(ctx context.Context, in *pb.Empty) (*pb.GetO
 		return nil, err
 	}
 
+	s.connMutex.RLock()
+	conns := make([]*ligoloConnection, len(s.connections))
+	copy(conns, s.connections)
+	s.connMutex.RUnlock()
+
 	var pbOpers []*pb.Operator
 	for _, oper := range opers {
 		pbOper := oper.Proto()
 
-		for _, conn := range s.connections {
+		for _, conn := range conns {
 			if conn.Operator.Name == oper.Name {
 				pbOper.IsOnline = true
 			}
@@ -434,7 +444,12 @@ func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (
 		return nil, err
 	}
 
-	for _, conn := range s.connections {
+	s.connMutex.RLock()
+	conns := make([]*ligoloConnection, len(s.connections))
+	copy(conns, s.connections)
+	s.connMutex.RUnlock()
+
+	for _, conn := range conns {
 		if conn.Operator.Name == targetOper.Name {
 			conn.Terminate()
 		}
@@ -554,17 +569,6 @@ func (s *ligoloServer) operatorFromContext(ctx context.Context) (*operator.Opera
 	}
 
 	return operator, nil
-}
-
-func (s *ligoloServer) certificateFromContext(ctx context.Context) (*x509.Certificate, error) {
-	p, ok := peer.FromContext(ctx)
-	if !ok {
-		return nil, errors.New("unknown error reading grpc context")
-	}
-
-	tlsInfo := p.AuthInfo.(credentials.TLSInfo)
-
-	return tlsInfo.State.VerifiedChains[0][0], nil
 }
 
 func (s *ligoloServer) unaryAuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {

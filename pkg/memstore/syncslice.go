@@ -14,15 +14,15 @@ func NewSyncslice[V any]() *Syncslice[V] {
 }
 
 func (mem *Syncslice[V]) Exists(key int) bool {
-	defer mem.mutex.RUnlock()
 	mem.mutex.RLock()
+	defer mem.mutex.RUnlock()
 
 	return len(mem.Data) > key
 }
 
 func (mem *Syncslice[V]) All() []V {
-	defer mem.mutex.RUnlock()
 	mem.mutex.RLock()
+	defer mem.mutex.RUnlock()
 
 	cp := make([]V, len(mem.Data))
 	copy(cp, mem.Data)
@@ -34,22 +34,22 @@ func (mem *Syncslice[V]) Get(key int) V {
 		return *new(V)
 	}
 
-	defer mem.mutex.RUnlock()
 	mem.mutex.RLock()
+	defer mem.mutex.RUnlock()
 
 	return mem.Data[key]
 }
 
 func (mem *Syncslice[V]) Append(value V) {
-	defer mem.mutex.Unlock()
 	mem.mutex.Lock()
+	defer mem.mutex.Unlock()
 
 	mem.Data = append(mem.Data, value)
 }
 
 func (mem *Syncslice[V]) Delete(key int) {
-	defer mem.mutex.Unlock()
 	mem.mutex.Lock()
+	defer mem.mutex.Unlock()
 
 	mem.Data[key] = mem.Data[len(mem.Data)-1]
 	mem.Data = mem.Data[:len(mem.Data)-1]

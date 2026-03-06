@@ -14,16 +14,16 @@ func NewSyncmap[K comparable, V any]() *Syncmap[K, V] {
 }
 
 func (mem *Syncmap[K, V]) Exists(key K) bool {
-	defer mem.mutex.RUnlock()
 	mem.mutex.RLock()
+	defer mem.mutex.RUnlock()
 
 	_, exists := mem.Data[key]
 	return exists
 }
 
 func (mem *Syncmap[K, V]) All() map[K]V {
-	defer mem.mutex.RUnlock()
 	mem.mutex.RLock()
+	defer mem.mutex.RUnlock()
 
 	cp := make(map[K]V, len(mem.Data))
 	for k, v := range mem.Data {
@@ -37,22 +37,22 @@ func (mem *Syncmap[K, V]) Get(key K) V {
 		return *new(V)
 	}
 
-	defer mem.mutex.RUnlock()
 	mem.mutex.RLock()
+	defer mem.mutex.RUnlock()
 
 	return mem.Data[key]
 }
 
 func (mem *Syncmap[K, V]) Set(key K, value V) {
-	defer mem.mutex.Unlock()
 	mem.mutex.Lock()
+	defer mem.mutex.Unlock()
 
 	mem.Data[key] = value
 }
 
 func (mem *Syncmap[K, V]) Delete(key K) {
-	defer mem.mutex.Unlock()
 	mem.mutex.Lock()
+	defer mem.mutex.Unlock()
 
 	delete(mem.Data, key)
 }
