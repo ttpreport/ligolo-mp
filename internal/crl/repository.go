@@ -41,3 +41,4 @@ func (repo *CRLRepository) Save(cert *RevokedCertificate) error {
 func (repo *CRLRepository) Remove(key string) error {
 	return repo.storage.Del(key)
 }
+

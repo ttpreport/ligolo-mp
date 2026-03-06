@@ -140,6 +140,55 @@ func (ss *SessionService) RemoveRoute(sessionID string, routeID string) (*route.
 	return route, ss.repo.Save(session)
 }
 
+func (ss *SessionService) EditRoute(sessionID string, routeID string, cidr string, metric int, isLoopback bool) (*route.Route, error) {
+	session := ss.repo.GetOne(sessionID)
+	if session == nil {
+		return nil, fmt.Errorf("session '%s' not found", sessionID)
+	}
+
+	oldRoute, err := session.RemoveRoute(routeID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := session.NewRoute(cidr, metric, isLoopback); err != nil {
+		// restore kernel state; error here is best-effort
+		session.NewRoute(oldRoute.Cidr.String(), oldRoute.Metric, oldRoute.IsLoopback) //nolint:errcheck
+		return nil, err
+	}
+
+	return oldRoute, ss.repo.Save(session)
+}
+
+func (ss *SessionService) MoveRoute(fromSessID string, routeID string, toSessID string) (*route.Route, error) {
+	fromSess := ss.repo.GetOne(fromSessID)
+	if fromSess == nil {
+		return nil, fmt.Errorf("session '%s' not found", fromSessID)
+	}
+
+	toSess := ss.repo.GetOne(toSessID)
+	if toSess == nil {
+		return nil, fmt.Errorf("session '%s' not found", toSessID)
+	}
+
+	oldRoute, err := fromSess.RemoveRoute(routeID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := toSess.NewRoute(oldRoute.Cidr.String(), oldRoute.Metric, oldRoute.IsLoopback); err != nil {
+		// restore kernel state; error here is best-effort
+		fromSess.NewRoute(oldRoute.Cidr.String(), oldRoute.Metric, oldRoute.IsLoopback) //nolint:errcheck
+		return nil, err
+	}
+
+	if err := ss.repo.Save(fromSess); err != nil {
+		return nil, err
+	}
+
+	return oldRoute, ss.repo.Save(toSess)
+}
+
 func (ss *SessionService) StartRelay(sessID string) error {
 	slog.Debug("activating relay")
 	session := ss.repo.GetOne(sessID)

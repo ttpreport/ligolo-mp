@@ -194,14 +194,8 @@ func (s *ligoloServer) AddRoute(ctx context.Context, in *pb.AddRouteReq) (*pb.Em
 func (s *ligoloServer) EditRoute(ctx context.Context, in *pb.EditRouteReq) (*pb.Empty, error) {
 	slog.Debug("Received request to edit route", slog.Any("in", in))
 
-	oldRoute, err := s.sessService.RemoveRoute(in.SessionID, in.RouteID)
+	oldRoute, err := s.sessService.EditRoute(in.SessionID, in.RouteID, in.Route.Cidr, int(in.Route.Metric), in.Route.IsLoopback)
 	if err != nil {
-		return &pb.Empty{}, err
-	}
-
-	err = s.sessService.NewRoute(in.SessionID, in.Route.Cidr, int(in.Route.Metric), in.Route.IsLoopback)
-	if err != nil {
-		s.sessService.NewRoute(in.SessionID, oldRoute.Cidr.String(), int(oldRoute.Metric), oldRoute.IsLoopback)
 		return &pb.Empty{}, err
 	}
 
@@ -225,14 +219,8 @@ func (s *ligoloServer) EditRoute(ctx context.Context, in *pb.EditRouteReq) (*pb.
 func (s *ligoloServer) MoveRoute(ctx context.Context, in *pb.MoveRouteReq) (*pb.Empty, error) {
 	slog.Debug("Received request to move route", slog.Any("in", in))
 
-	oldRoute, err := s.sessService.RemoveRoute(in.OldSessionID, in.RouteID)
+	oldRoute, err := s.sessService.MoveRoute(in.OldSessionID, in.RouteID, in.NewSessionID)
 	if err != nil {
-		return &pb.Empty{}, err
-	}
-
-	err = s.sessService.NewRoute(in.NewSessionID, oldRoute.Cidr.String(), oldRoute.Metric, oldRoute.IsLoopback)
-	if err != nil {
-		s.sessService.NewRoute(in.OldSessionID, oldRoute.Cidr.String(), oldRoute.Metric, oldRoute.IsLoopback)
 		return &pb.Empty{}, err
 	}
 
@@ -442,13 +430,7 @@ func (s *ligoloServer) DelOperator(ctx context.Context, in *pb.DelOperatorReq) (
 		}
 	}
 
-	removedOperator, err := s.operService.RemoveOperator(in.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.certService.Revoke(removedOperator.Cert, "removed by admin")
-	if err != nil {
+	if _, err := s.operService.RemoveOperator(in.Name); err != nil {
 		return nil, err
 	}
 

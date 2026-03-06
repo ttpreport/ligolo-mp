@@ -111,6 +111,13 @@ func (service *OperatorService) RemoveOperator(name string) (*Operator, error) {
 		return nil, fmt.Errorf("operator '%s' not found", name)
 	}
 
+	// Revoke first: if the delete fails after revocation, the operator is locked
+	// out (cert invalid) but still visible in the DB — an admin can retry the
+	// delete. The reverse order (delete then revoke) leaves a deleted operator
+	// with a valid cert, which is the dangerous case.
+	if err := service.certService.Revoke(oper.Cert, "removed by admin"); err != nil {
+		return nil, err
+	}
 	return oper, service.repo.Remove(oper)
 }
 
