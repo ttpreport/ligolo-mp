@@ -1,7 +1,6 @@
 package netstack
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"log/slog"
@@ -22,7 +21,6 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv6"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/icmp"
-	"gvisor.dev/gvisor/pkg/tcpip/transport/raw"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 	"gvisor.dev/gvisor/pkg/waiter"
@@ -92,7 +90,67 @@ type NetStack struct {
 	pool  *ConnPool
 	stack *stack.Stack
 	sync.Mutex
-	closeChan chan bool
+}
+
+// icmpEchoInterceptor implements stack.NetworkDispatcher. It sits between
+// the fdbased link endpoint and gVisor's network layer. Any ICMPv4 echo
+// request is diverted to the NetStack connection pool (so handleICMP can
+// decide whether the remote host is alive) and is NOT forwarded to gVisor.
+// This prevents gVisor's built-in ICMP echo handler from auto-replying
+// to every request regardless of whether the target host actually exists.
+type icmpEchoInterceptor struct {
+	ns         *NetStack
+	dispatcher stack.NetworkDispatcher
+}
+
+func (i *icmpEchoInterceptor) DeliverNetworkPacket(protocol tcpip.NetworkProtocolNumber, pkt *stack.PacketBuffer) {
+	if protocol == ipv4.ProtocolNumber {
+		// At this point the IPv4 header has NOT been consumed yet —
+		// fdbased hands us the raw IP packet with everything in pkt.Data().
+		// Read the minimum IPv4 header to get the transport protocol and
+		// the actual header length (options may extend it past 20 bytes).
+		hdrBytes, ok := pkt.Data().PullUp(header.IPv4MinimumSize)
+		if ok {
+			iph := header.IPv4(hdrBytes)
+			if iph.TransportProtocol() == header.ICMPv4ProtocolNumber {
+				hlen := int(iph.HeaderLength())
+				icmpBytes, ok := pkt.Data().PullUp(hlen + header.ICMPv4MinimumSize)
+				if ok && header.ICMPv4(icmpBytes[hlen:]).Type() == header.ICMPv4Echo {
+					cloned := pkt.Clone()
+					cloned.NetworkProtocolNumber = ipv4.ProtocolNumber
+					cloned.TransportProtocolNumber = icmp.ProtocolNumber4
+					// Consume the IPv4 header on the clone so that
+					// handleICMP / ProcessICMP can access it via
+					// pkt.NetworkHeader().Slice(), matching the layout
+					// expected by those functions.
+					cloned.NetworkHeader().Consume(hlen)
+					tunConn := TunConn{
+						Protocol: icmp.ProtocolNumber4,
+						Handler:  ICMPConn{Request: *cloned},
+					}
+					i.ns.tryAddICMP(tunConn)
+					return // suppress gVisor auto-reply
+				}
+			}
+		}
+	}
+	i.dispatcher.DeliverNetworkPacket(protocol, pkt)
+}
+
+func (i *icmpEchoInterceptor) DeliverLinkPacket(protocol tcpip.NetworkProtocolNumber, pkt *stack.PacketBuffer) {
+	i.dispatcher.DeliverLinkPacket(protocol, pkt)
+}
+
+// interceptingEndpoint wraps a LinkEndpoint and injects icmpEchoInterceptor
+// as the NetworkDispatcher so that ICMP echo requests never reach gVisor's
+// IPv4 handler.
+type interceptingEndpoint struct {
+	stack.LinkEndpoint
+	ns *NetStack
+}
+
+func (e *interceptingEndpoint) Attach(dispatcher stack.NetworkDispatcher) {
+	e.LinkEndpoint.Attach(&icmpEchoInterceptor{ns: e.ns, dispatcher: dispatcher})
 }
 
 // GetStack returns the current Gvisor stack.Stack object
@@ -110,7 +168,6 @@ func (s *NetStack) SetConnPool(connPool *ConnPool) {
 // Cleans up after gVisor. Couldn't find a better way
 func (s *NetStack) Destroy() error {
 	s.pool.Close()
-	s.closeChan <- true
 	s.stack.Destroy()
 
 	return nil
@@ -232,84 +289,6 @@ func (ns *NetStack) HandlePacket(localConn TunConn, multiplex *yamux.Session, lo
 	} else {
 		localConn.Terminate(reply.Reset)
 	}
-}
-
-// icmpResponder handle ICMP packets coming to gvisor/netstack.
-// Instead of responding to all ICMPs ECHO by default, we try to
-// execute a ping on the Agent, and depending of the response, we
-// send a ICMP reply back.
-func (ns *NetStack) icmpResponder() (chan bool, error) {
-	quit := make(chan bool)
-	var wq waiter.Queue
-	rawProto, rawerr := raw.NewEndpoint(ns.stack, ipv4.ProtocolNumber, icmp.ProtocolNumber4, &wq)
-	if rawerr != nil {
-		return nil, errors.New("could not create raw endpoint")
-	}
-	if err := rawProto.Bind(tcpip.FullAddress{}); err != nil {
-		return nil, errors.New("could not bind raw endpoint")
-	}
-	go func() {
-		defer rawProto.Close()
-
-		we, ch := waiter.NewChannelEntry(waiter.ReadableEvents)
-		wq.EventRegister(&we)
-
-		defer wq.EventUnregister(&we)
-
-		for {
-			var buff bytes.Buffer
-			_, err := rawProto.Read(&buff, tcpip.ReadOptions{})
-
-			if _, ok := err.(*tcpip.ErrWouldBlock); ok {
-				// Wait for data to become available.
-				select {
-				case <-quit:
-					return
-				case <-ch:
-					_, err := rawProto.Read(&buff, tcpip.ReadOptions{})
-
-					if err != nil {
-						if _, ok := err.(*tcpip.ErrWouldBlock); ok {
-							// Oh, a race condition?
-							continue
-						} else {
-							// This is bad.
-							panic(err)
-						}
-					}
-
-					iph := header.IPv4(buff.Bytes())
-
-					hlen := int(iph.HeaderLength())
-					if buff.Len() < hlen {
-						return
-					}
-
-					// Reconstruct a ICMP PacketBuffer from bytes.
-
-					view := buffer.MakeWithData(buff.Bytes())
-					packetbuff := stack.NewPacketBuffer(stack.PacketBufferOptions{
-						Payload:            view,
-						ReserveHeaderBytes: hlen,
-					})
-
-					packetbuff.NetworkProtocolNumber = ipv4.ProtocolNumber
-					packetbuff.TransportProtocolNumber = icmp.ProtocolNumber4
-					packetbuff.NetworkHeader().Consume(hlen)
-					tunConn := TunConn{
-						Protocol: icmp.ProtocolNumber4,
-						Handler:  ICMPConn{Request: *packetbuff},
-					}
-
-					if !ns.tryAddICMP(tunConn) {
-						continue
-					}
-				}
-			}
-
-		}
-	}()
-	return quit, nil
 }
 
 // tryAddICMP adds a TunConn to the connection pool under the NetStack mutex.
@@ -553,15 +532,9 @@ func NewNetstack(maxConnections int, maxInFlight int, tunName string) (*NetStack
 		TransportProtocols: []stack.TransportProtocolFactory{
 			tcp.NewProtocol,
 			udp.NewProtocol,
-			icmp.NewProtocol4,
-			icmp.NewProtocol6,
 		},
 		HandleLocal: false,
 	})
-
-	// Gvisor Hack: Disable ICMP handling.
-	ns.stack.SetICMPLimit(0)
-	ns.stack.SetICMPBurst(0)
 
 	// Forward TCP connections
 	tcpHandler := tcp.NewForwarder(ns.stack, 0, maxInFlight, func(request *tcp.ForwarderRequest) {
@@ -615,18 +588,16 @@ func NewNetstack(maxConnections int, maxInFlight int, tunName string) (*NetStack
 		return nil, err
 	}
 
+	// Wrap the link endpoint so ICMP echo requests are intercepted before
+	// reaching gVisor's IPv4 handler (which would auto-reply unconditionally).
+	// The interceptor routes echo requests to the ConnPool so handleICMP can
+	// probe the agent and reply only when the target host is actually alive.
+	wrappedEP := &interceptingEndpoint{LinkEndpoint: linkEP, ns: ns}
+
 	// Create a new NIC
-	if err := ns.stack.CreateNIC(1, linkEP); err != nil {
+	if err := ns.stack.CreateNIC(1, wrappedEP); err != nil {
 		return nil, errors.New(err.String())
 	}
-
-	// Start a endpoint that will reply to ICMP echo queries
-	closeChan, err := ns.icmpResponder()
-	if err != nil {
-		return nil, err
-	}
-
-	ns.closeChan = closeChan
 
 	// Allow all routes by default
 	ns.stack.SetRouteTable([]tcpip.Route{
