@@ -252,14 +252,15 @@ func TestSessionRepository_RemoveAll(t *testing.T) {
 }
 
 // TestSessionRepository_Save_ConcurrentReadWrite verifies that concurrent Save and GetOne
-// do not panic or corrupt state. The two operations are in separate lock scopes; a
-// concurrent reader can observe a torn write window between the connections map and SQLite.
-
+// do not race on the repository's internal state. Fix introduced a repo-level mutex
+// that spans both the in-memory connections map update and the SQLite write inside Save,
+// so a reader calling GetOne always sees a consistent view of both stores.
+// Run with -race to catch any regression.
 func TestSessionRepository_Save_ConcurrentReadWrite(t *testing.T) {
 	repo, cleanup := newTestRepo(t)
 	defer cleanup()
 
-	sess := makeSession("torn-id", "", "host")
+	sess := makeSession("concurrent-id", "", "host")
 	sess.IsConnected = true
 
 	const iterations = 500
@@ -274,9 +275,7 @@ func TestSessionRepository_Save_ConcurrentReadWrite(t *testing.T) {
 		}
 	}()
 
-	// Reader: looks up by ID (connections map path) concurrently.
-	// Under MTX-DB-2, the connections map entry may be present while SQLite is
-	// still being written, or already cleared while SQLite still has the old value.
+	// Reader: looks up by ID (connections map path) concurrently with the writer.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -285,9 +284,14 @@ func TestSessionRepository_Save_ConcurrentReadWrite(t *testing.T) {
 		}
 	}()
 
+	// Second reader via GetAll (SQLite path) — exercises the other branch.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			repo.GetAll() //nolint:errcheck
+		}
+	}()
+
 	wg.Wait()
-	// If we reach here without a data race (run with -race), both paths are safe
-	// at the individual-operation level. The torn-write window between the two
-	// separate lock acquisitions is not directly observable here without instrumentation.
-	t.Log("concurrent Save/GetOne completed — run with -race for race detection")
 }
