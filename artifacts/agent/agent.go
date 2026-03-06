@@ -33,19 +33,14 @@ var (
 )
 
 func main() {
-	defer func() { // probably okay
-		if err := recover(); err != nil {
-			main()
-		}
-	}()
-
+	// One-time setup: these run exactly once regardless of how many times the
+	// connection loop is restarted after a panic.
 	timeout := 10 * time.Second
 	proxy.RegisterDialerType("http", connectproxy.HttpHandler(timeout))
 	proxy.RegisterDialerType("https", connectproxy.HttpsHandler(timeout, &tls.Config{
 		InsecureSkipVerify: true,
 	}))
 
-	var tlsConfig tls.Config
 	var proxyServer = `{{ .ProxyServer }}`
 	var servers = strings.Split(`{{ .Servers }}`, "\n")
 	var AgentCert = []byte(`{{ .AgentCert }}`)
@@ -62,9 +57,25 @@ func main() {
 		servers = []string{*serverOverride}
 	}
 
-	var conn net.Conn
 	redirectorMap = make(map[string]relay.Redirector)
 
+	// Outer loop restarts the connection loop after a panic without growing the
+	// call stack. Each iteration wraps run() in a panic-recovering closure so
+	// that a nil-deref or other runtime panic is contained and the agent
+	// reconnects cleanly instead of crashing.
+	for {
+		func() {
+			defer func() { recover() }() //nolint:errcheck
+			run(servers, proxyServer, *insecure, ignoreEnvProxy, timeout, AgentCert, AgentKey, CACert)
+		}()
+		time.Sleep(5 * time.Second)
+	}
+}
+
+// run contains the infinite connection loop. It is a separate function so that
+// the panic-recovery wrapper in main() can restart it without recursion.
+func run(servers []string, proxyServer string, insecure, ignoreEnvProxy bool, timeout time.Duration, AgentCert, AgentKey, CACert []byte) {
+	var conn net.Conn
 	for {
 		for _, server := range servers {
 			host, _, err := net.SplitHostPort(server)
@@ -82,7 +93,7 @@ func main() {
 				continue
 			}
 
-			tlsConfig = tls.Config{
+			tlsConfig := tls.Config{
 				RootCAs:            ca,
 				ServerName:         host,
 				Certificates:       []tls.Certificate{mtlsCert},
@@ -100,7 +111,7 @@ func main() {
 						return errors.New("no root certificate")
 					}
 
-					if !*insecure {
+					if !insecure {
 						if _, err := cert.Verify(options); err != nil {
 							return err
 						}
