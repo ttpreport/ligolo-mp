@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,7 +28,8 @@ import (
 )
 
 var (
-	redirectorMap map[string]relay.Redirector
+	redirectorMap   map[string]relay.Redirector
+	redirectorMutex sync.Mutex
 )
 
 func main() {
@@ -256,11 +258,15 @@ func handleConn(conn net.Conn) {
 			}
 		}
 
+		redirectorMutex.Lock()
+		redirectorSnapshot := protocol.NewRedirectorInterface(redirectorMap)
+		redirectorMutex.Unlock()
+
 		infoResponse := protocol.InfoReplyPacket{
 			Name:        fmt.Sprintf("%s@%s", username, hostname),
 			Hostname:    hostname,
 			Interfaces:  protocol.NewNetInterfaces(nonloopbackIfaces),
-			Redirectors: protocol.NewRedirectorInterface(redirectorMap),
+			Redirectors: redirectorSnapshot,
 		}
 
 		encoder.Encode(protocol.Envelope{
@@ -271,8 +277,13 @@ func handleConn(conn net.Conn) {
 		closeRequest := e.(protocol.RedirectorCloseRequestPacket)
 		encoder := protocol.NewEncoder(conn)
 
+		redirectorMutex.Lock()
+		lis, ok := redirectorMap[closeRequest.ID]
+		delete(redirectorMap, closeRequest.ID)
+		redirectorMutex.Unlock()
+
 		var err error
-		if lis, ok := redirectorMap[closeRequest.ID]; ok {
+		if ok {
 			err = lis.Close()
 		}
 
@@ -282,8 +293,6 @@ func handleConn(conn net.Conn) {
 		if err != nil {
 			redirectorResponse.ErrString = err.Error()
 		}
-
-		delete(redirectorMap, closeRequest.ID)
 
 		encoder.Encode(protocol.Envelope{
 			Type:    protocol.MessageRedirectorCloseResponse,
@@ -303,7 +312,14 @@ func handleConn(conn net.Conn) {
 				ErrString: err.Error(),
 			}
 		} else {
-			if _, exists := redirectorMap[redirector.ID]; exists {
+			redirectorMutex.Lock()
+			_, exists := redirectorMap[redirector.ID]
+			if !exists {
+				redirectorMap[redirector.ID] = redirector
+			}
+			redirectorMutex.Unlock()
+
+			if exists {
 				redirectorResponse = protocol.RedirectorResponsePacket{
 					ID:        redirector.ID,
 					Err:       true,
@@ -315,8 +331,6 @@ func handleConn(conn net.Conn) {
 					Err:       false,
 					ErrString: "",
 				}
-				redirectorMap[redirector.ID] = redirector
-
 				go redirector.ListenAndRelay()
 			}
 		}

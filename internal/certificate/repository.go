@@ -21,13 +21,8 @@ func NewCertificateRepository(store *storage.Store) (*CertificateRepository, err
 	}, nil
 }
 
-func (repo *CertificateRepository) GetOne(name string) *Certificate {
-	result, err := repo.storage.Get(name)
-	if err != nil {
-		return nil
-	}
-
-	return result
+func (repo *CertificateRepository) GetOne(name string) (*Certificate, error) {
+	return repo.storage.Get(name)
 }
 
 func (repo *CertificateRepository) GetAll() ([]*Certificate, error) {

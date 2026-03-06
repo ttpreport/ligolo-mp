@@ -50,7 +50,13 @@ func (service *OperatorService) NewOperator(name string, isAdmin bool, server st
 		return nil, fmt.Errorf("operator '%s' already exists", name)
 	}
 
-	CA := service.certService.GetCA()
+	CA, err := service.certService.GetCA()
+	if err != nil {
+		return nil, err
+	}
+	if CA == nil {
+		return nil, fmt.Errorf("CA certificate not found")
+	}
 	oper.CA = CA.Certificate
 
 	operCert, err := service.certService.GenerateCert(oper.Name, CA)

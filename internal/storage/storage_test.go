@@ -240,7 +240,7 @@ func TestStore_CrossInstance_ConcurrentWrites(t *testing.T) {
 	if len(failures) > 0 {
 		t.Logf("%d/%d cross-instance writes failed (SQLITE_BUSY or similar): first=%v",
 			len(failures), 200, failures[0])
-		// Known issue: fixing requires WAL mode + shared connection pool (see DB-5).
+		// Known issue: fixing requires WAL mode + shared connection pool.
 	}
 }
 

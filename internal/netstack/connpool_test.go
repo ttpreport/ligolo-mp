@@ -121,7 +121,7 @@ func TestConnPool_Add_DoesNotBlockUnderFullChannel(t *testing.T) {
 	}
 
 	// Start a goroutine that tries to Add to the full pool.
-	// Under MTX-2, this blocks while holding p.Lock().
+	// If Add holds the mutex while blocked on the channel, Closed() would deadlock.
 	addDone := make(chan struct{})
 	go func() {
 		defer close(addDone)

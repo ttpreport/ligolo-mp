@@ -40,7 +40,10 @@ func NewAssetsService(cfg *config.Config, repo *AssetRepository) *AssetService {
 }
 
 func (assets *AssetService) Init() error {
-	currentGo := assets.repo.GetOne("go")
+	currentGo, err := assets.repo.GetOne("go")
+	if err != nil {
+		return err
+	}
 	distGo := assets.GetDistGo()
 
 	if currentGo == nil || !currentGo.Equal(distGo) {

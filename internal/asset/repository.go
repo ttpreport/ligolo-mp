@@ -19,13 +19,8 @@ func NewAssetRepository(store *storage.Store) (*AssetRepository, error) {
 	}, nil
 }
 
-func (repo *AssetRepository) GetOne(name string) *Asset {
-	result, err := repo.storage.Get(name)
-	if err != nil {
-		return nil
-	}
-
-	return result
+func (repo *AssetRepository) GetOne(name string) (*Asset, error) {
+	return repo.storage.Get(name)
 }
 
 func (repo *AssetRepository) GetAll() ([]*Asset, error) {

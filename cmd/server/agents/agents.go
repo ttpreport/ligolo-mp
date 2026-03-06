@@ -26,13 +26,25 @@ type AgentApiHandler struct {
 }
 
 func Run(config *config.Config, certService *certificate.CertificateService, sessionService *session.SessionService) error {
-	CACert := certService.GetCA()
+	CACert, err := certService.GetCA()
+	if err != nil {
+		return err
+	}
+	if CACert == nil {
+		return errors.New("CA certificate not found")
+	}
 	certpool, err := CACert.CertPool()
 	if err != nil {
 		return err
 	}
 
-	agentCert := certService.GetAgentServerCert()
+	agentCert, err := certService.GetAgentServerCert()
+	if err != nil {
+		return err
+	}
+	if agentCert == nil {
+		return errors.New("agent server certificate not found")
+	}
 	tlsCert, err := agentCert.KeyPair()
 	if err != nil {
 		return err

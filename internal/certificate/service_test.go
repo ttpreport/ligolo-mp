@@ -185,7 +185,10 @@ func TestCertificateService_Init_Idempotent(t *testing.T) {
 	if err := svc.Init(); err != nil {
 		t.Fatalf("first Init: %v", err)
 	}
-	ca1 := svc.GetCA()
+	ca1, err := svc.GetCA()
+	if err != nil {
+		t.Fatalf("GetCA after first Init: %v", err)
+	}
 	if ca1 == nil {
 		t.Fatal("GetCA after Init returned nil")
 	}
@@ -194,7 +197,10 @@ func TestCertificateService_Init_Idempotent(t *testing.T) {
 	if err := svc.Init(); err != nil {
 		t.Fatalf("second Init: %v", err)
 	}
-	ca2 := svc.GetCA()
+	ca2, err := svc.GetCA()
+	if err != nil {
+		t.Fatalf("GetCA after second Init: %v", err)
+	}
 	if ca2 == nil {
 		t.Fatal("GetCA after second Init returned nil")
 	}
@@ -207,12 +213,20 @@ func TestCertificateService_Init_CreatesServerCerts(t *testing.T) {
 	svc, cleanup := newTestCertService(t)
 	defer cleanup()
 
-	svc.Init()
+	svc.Init() //nolint:errcheck
 
-	if svc.GetOperatorServerCert() == nil {
+	opCert, err := svc.GetOperatorServerCert()
+	if err != nil {
+		t.Fatalf("GetOperatorServerCert: %v", err)
+	}
+	if opCert == nil {
 		t.Error("GetOperatorServerCert returned nil after Init")
 	}
-	if svc.GetAgentServerCert() == nil {
+	agCert, err := svc.GetAgentServerCert()
+	if err != nil {
+		t.Fatalf("GetAgentServerCert: %v", err)
+	}
+	if agCert == nil {
 		t.Error("GetAgentServerCert returned nil after Init")
 	}
 }
@@ -271,7 +285,10 @@ func TestCertificateRepository_Save_GetOne_Remove(t *testing.T) {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got := repo.GetOne("test-cert")
+	got, err := repo.GetOne("test-cert")
+	if err != nil {
+		t.Fatalf("GetOne: %v", err)
+	}
 	if got == nil {
 		t.Fatal("GetOne after Save returned nil")
 	}
@@ -279,8 +296,12 @@ func TestCertificateRepository_Save_GetOne_Remove(t *testing.T) {
 		t.Errorf("Certificate = %q, want %q", got.Certificate, "pem")
 	}
 
-	repo.Remove("test-cert")
-	if repo.GetOne("test-cert") != nil {
+	repo.Remove("test-cert") //nolint:errcheck
+	afterRemove, err := repo.GetOne("test-cert")
+	if err != nil {
+		t.Fatalf("GetOne after Remove: %v", err)
+	}
+	if afterRemove != nil {
 		t.Error("GetOne after Remove returned non-nil")
 	}
 }

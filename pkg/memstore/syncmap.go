@@ -33,10 +33,6 @@ func (mem *Syncmap[K, V]) All() map[K]V {
 }
 
 func (mem *Syncmap[K, V]) Get(key K) V {
-	if !mem.Exists(key) {
-		return *new(V)
-	}
-
 	mem.mutex.RLock()
 	defer mem.mutex.RUnlock()
 

@@ -21,13 +21,8 @@ func NewCRLRepository(store *storage.Store) (*CRLRepository, error) {
 	}, nil
 }
 
-func (repo *CRLRepository) GetOne(hash string) *RevokedCertificate {
-	result, err := repo.storage.Get(hash)
-	if err != nil {
-		return nil
-	}
-
-	return result
+func (repo *CRLRepository) GetOne(hash string) (*RevokedCertificate, error) {
+	return repo.storage.Get(hash)
 }
 
 func (repo *CRLRepository) GetAll() ([]*RevokedCertificate, error) {

@@ -132,7 +132,10 @@ func TestCRLRepository_Save_GetOne_Remove(t *testing.T) {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got := repo.GetOne(rc.Hash())
+	got, err := repo.GetOne(rc.Hash())
+	if err != nil {
+		t.Fatalf("GetOne: %v", err)
+	}
 	if got == nil {
 		t.Fatal("GetOne after Save returned nil")
 	}
@@ -143,7 +146,11 @@ func TestCRLRepository_Save_GetOne_Remove(t *testing.T) {
 	if err := repo.Remove(rc.Hash()); err != nil {
 		t.Fatalf("Remove: %v", err)
 	}
-	if repo.GetOne(rc.Hash()) != nil {
+	afterRemove, err := repo.GetOne(rc.Hash())
+	if err != nil {
+		t.Fatalf("GetOne after Remove: %v", err)
+	}
+	if afterRemove != nil {
 		t.Error("GetOne after Remove returned non-nil, want nil")
 	}
 }

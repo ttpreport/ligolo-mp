@@ -166,20 +166,6 @@ func (sess *Session) Connect(multiplex *yamux.Session) error {
 		sess.Interfaces.Append(iface)
 	}
 
-	// sync redirectors with any offline changes
-	for _, remoteRedirector := range info.Redirectors {
-		if !sess.Redirectors.Exists(remoteRedirector.ID) {
-			if err := sess.RemoveRedirector(remoteRedirector.ID); err != nil {
-				slog.Error("could not remove redirector", slog.Any("error", err))
-			}
-		}
-	}
-	for _, redirector := range sess.Redirectors.All() {
-		if err := sess.NewRedirector(redirector.Protocol, redirector.From, redirector.To); err != nil {
-			slog.Error("could not create redirector", slog.Any("error", err))
-		}
-	}
-
 	sess.Hostname = info.Hostname
 	sess.ID = sess.Hash()
 	sess.IsConnected = true
@@ -190,6 +176,23 @@ func (sess *Session) Connect(multiplex *yamux.Session) error {
 
 	if sess.LastSeen.IsZero() {
 		sess.LastSeen = time.Now()
+	}
+
+	// Close agent-side redirectors the server no longer tracks.
+	// Must run after IsConnected=true so remoteRemoveRedirector actually fires.
+	for _, remoteRedirector := range info.Redirectors {
+		if !sess.Redirectors.Exists(remoteRedirector.ID) {
+			if err := sess.remoteRemoveRedirector(remoteRedirector.ID); err != nil {
+				slog.Error("could not remove stale redirector", slog.Any("error", err))
+			}
+		}
+	}
+	// Re-open server-tracked redirectors on the agent (used when Connect is
+	// called on a session that already has redirectors).
+	for _, redirector := range sess.Redirectors.All() {
+		if err := sess.NewRedirector(redirector.Protocol, redirector.From, redirector.To); err != nil {
+			slog.Error("could not create redirector", slog.Any("error", err))
+		}
 	}
 
 	return nil
@@ -235,14 +238,13 @@ func (sess *Session) NewRedirector(proto string, from string, to string) error {
 	}
 	redirector.ID = redirector.Hash()
 
-	sess.Redirectors.Set(redirector.ID, redirector)
-
 	if sess.IsConnected {
 		if err := sess.remoteCreateRedirector(redirector.ID, proto, from, to); err != nil {
 			return err
 		}
 	}
 
+	sess.Redirectors.Set(redirector.ID, redirector)
 	return nil
 }
 

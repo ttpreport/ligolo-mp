@@ -35,15 +35,15 @@ func NewCertificateService(repo *CertificateRepository, crl *crl.CRLService) *Ce
 	}
 }
 
-func (cs *CertificateService) GetCA() *Certificate {
+func (cs *CertificateService) GetCA() (*Certificate, error) {
 	return cs.repo.GetOne(cs.caName)
 }
 
-func (cs *CertificateService) GetOperatorServerCert() *Certificate {
+func (cs *CertificateService) GetOperatorServerCert() (*Certificate, error) {
 	return cs.repo.GetOne(cs.operatorCertName)
 }
 
-func (cs *CertificateService) GetAgentServerCert() *Certificate {
+func (cs *CertificateService) GetAgentServerCert() (*Certificate, error) {
 	return cs.repo.GetOne(cs.agentCertName)
 }
 
@@ -60,12 +60,14 @@ func (cs *CertificateService) Remove(name string) error {
 }
 
 func (cs *CertificateService) RegenerateCert(name string) (*Certificate, error) {
-	err := cs.Remove(name)
-	if err != nil {
+	if err := cs.Remove(name); err != nil {
 		return nil, err
 	}
 
-	CACert := cs.repo.GetOne(cs.caName)
+	CACert, err := cs.repo.GetOne(cs.caName)
+	if err != nil {
+		return nil, err
+	}
 	if CACert == nil {
 		return nil, fmt.Errorf("CA certificate not found")
 	}
@@ -75,8 +77,7 @@ func (cs *CertificateService) RegenerateCert(name string) (*Certificate, error) 
 		return nil, err
 	}
 
-	err = cs.Save(name, cert)
-	if err != nil {
+	if err = cs.Save(name, cert); err != nil {
 		return nil, err
 	}
 
@@ -84,44 +85,44 @@ func (cs *CertificateService) RegenerateCert(name string) (*Certificate, error) 
 }
 
 func (cs *CertificateService) Init() error {
-	var err error
-	var CAcert *Certificate
-
-	CAcert = cs.GetCA()
+	CAcert, err := cs.GetCA()
+	if err != nil {
+		return err
+	}
 	if CAcert == nil {
 		CAcert, err = cs.GenerateCA(cs.caName)
 		if err != nil {
 			return err
 		}
-
-		err = cs.repo.Save(CAcert)
-		if err != nil {
+		if err = cs.repo.Save(CAcert); err != nil {
 			return err
 		}
 	}
 
-	operatorCert := cs.repo.GetOne(cs.operatorCertName)
+	operatorCert, err := cs.repo.GetOne(cs.operatorCertName)
+	if err != nil {
+		return err
+	}
 	if operatorCert == nil {
-		operatorCert, err := cs.GenerateCert(cs.operatorCertName, CAcert)
+		newOperatorCert, err := cs.GenerateCert(cs.operatorCertName, CAcert)
 		if err != nil {
 			return err
 		}
-
-		err = cs.repo.Save(operatorCert)
-		if err != nil {
+		if err = cs.repo.Save(newOperatorCert); err != nil {
 			return err
 		}
 	}
 
-	agentCert := cs.repo.GetOne(cs.agentCertName)
+	agentCert, err := cs.repo.GetOne(cs.agentCertName)
+	if err != nil {
+		return err
+	}
 	if agentCert == nil {
-		agentCert, err := cs.GenerateCert(cs.agentCertName, CAcert)
+		newAgentCert, err := cs.GenerateCert(cs.agentCertName, CAcert)
 		if err != nil {
 			return err
 		}
-
-		err = cs.repo.Save(agentCert)
-		if err != nil {
+		if err = cs.repo.Save(newAgentCert); err != nil {
 			return err
 		}
 	}

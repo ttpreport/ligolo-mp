@@ -68,7 +68,6 @@ func (s *ligoloServer) Join(in *pb.Empty, stream pb.Ligolo_JoinServer) error {
 	s.connMutex.Lock()
 	connection := NewLigoloConnection(oper, stream)
 	s.connections = append(s.connections, connection)
-	var operNum = len(s.connections)
 	s.connMutex.Unlock()
 
 	select {
@@ -79,7 +78,9 @@ func (s *ligoloServer) Join(in *pb.Empty, stream pb.Ligolo_JoinServer) error {
 	}
 
 	s.connMutex.Lock()
-	s.connections = slices.Delete(s.connections, operNum-1, operNum)
+	s.connections = slices.DeleteFunc(s.connections, func(c *ligoloConnection) bool {
+		return c == connection
+	})
 	s.connMutex.Unlock()
 
 	events.Publish(events.OK, "%s has left the game", oper.Name)
@@ -283,7 +284,10 @@ func (s *ligoloServer) DelRedirector(ctx context.Context, in *pb.DelRedirectorRe
 }
 
 func (s *ligoloServer) GenerateAgent(ctx context.Context, in *pb.GenerateAgentReq) (*pb.GenerateAgentResp, error) {
-	CACert := s.certService.GetCA()
+	CACert, err := s.certService.GetCA()
+	if err != nil {
+		return nil, err
+	}
 	if CACert == nil {
 		return nil, fmt.Errorf("CA certificate not found")
 	}
@@ -592,8 +596,21 @@ func Run(config *config.Config, certService *certificate.CertificateService, ses
 		return err
 	}
 
-	CACert := certService.GetCA()
-	serverCert := certService.GetOperatorServerCert()
+	CACert, err := certService.GetCA()
+	if err != nil {
+		return err
+	}
+	if CACert == nil {
+		return errors.New("CA certificate not found")
+	}
+
+	serverCert, err := certService.GetOperatorServerCert()
+	if err != nil {
+		return err
+	}
+	if serverCert == nil {
+		return errors.New("operator server certificate not found")
+	}
 
 	tlsCert, err := serverCert.KeyPair()
 	if err != nil {
