@@ -34,7 +34,18 @@ func (ss *SessionRepository) GetAll() ([]*Session, error) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
-	return ss.storage.GetAll()
+	sessions, err := ss.storage.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	for i, sess := range sessions {
+		if live := ss.connections.Get(sess.ID); live != nil {
+			sessions[i] = live
+		}
+	}
+
+	return sessions, nil
 }
 
 func (ss *SessionRepository) GetOne(id string) *Session {
