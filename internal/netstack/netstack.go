@@ -482,16 +482,20 @@ func NewConnPool(size int) *ConnPool {
 	return &ConnPool{CloseChan: make(chan interface{}), Pool: make(chan TunConn, size)}
 }
 func (p *ConnPool) Add(packet TunConn) error {
-	p.Lock()
-	defer p.Unlock()
-
+	// Go's select has no case priorities, so we use a nested select:
+	// the outer non-blocking arm catches an already-closed pool before
+	// competing with p.Pool; the inner blocking select handles a concurrent
+	// Close() that fires while we are waiting for buffer space.
 	select {
 	case <-p.CloseChan:
-		return errors.New("pool is closed")
 	default:
-		p.Pool <- packet
+		select {
+		case p.Pool <- packet:
+			return nil
+		case <-p.CloseChan:
+		}
 	}
-	return nil
+	return errors.New("pool is closed")
 }
 
 func (p *ConnPool) Close() error {
@@ -502,9 +506,10 @@ func (p *ConnPool) Close() error {
 	case <-p.CloseChan:
 		return errors.New("pool is already closed")
 	default:
+		// Close only CloseChan; do not close Pool so that concurrent Add()
+		// selects on Pool<-packet can't panic from sending to a closed channel.
+		// Once CloseChan is closed, all Add()/Get() selects will pick that arm.
 		close(p.CloseChan)
-		close(p.Pool)
-		p.Pool = nil
 	}
 	return nil
 }
@@ -519,8 +524,6 @@ func (p *ConnPool) Closed() bool {
 }
 
 func (p *ConnPool) Get() (TunConn, error) {
-	p.Lock()
-	defer p.Unlock()
 	select {
 	case <-p.CloseChan:
 		return TunConn{}, errors.New("pool is closed")

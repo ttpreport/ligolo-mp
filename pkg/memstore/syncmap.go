@@ -25,7 +25,11 @@ func (mem *Syncmap[K, V]) All() map[K]V {
 	defer mem.mutex.RUnlock()
 	mem.mutex.RLock()
 
-	return mem.Data
+	cp := make(map[K]V, len(mem.Data))
+	for k, v := range mem.Data {
+		cp[k] = v
+	}
+	return cp
 }
 
 func (mem *Syncmap[K, V]) Get(key K) V {

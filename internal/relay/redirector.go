@@ -2,6 +2,7 @@ package relay
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 )
 
@@ -31,7 +32,9 @@ func (s *Redirector) ListenAndRelay() error {
 
 		rconn, err := net.Dial(s.Network, s.To)
 		if err != nil {
-			return err
+			slog.Error("redirector: dial failed", slog.Any("to", s.To), slog.Any("error", err))
+			lconn.Close()
+			continue
 		}
 
 		go StartRelay(lconn, rconn)

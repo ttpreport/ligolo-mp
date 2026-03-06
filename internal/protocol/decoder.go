@@ -42,73 +42,73 @@ func (d *LigoloDecoder) Decode() error {
 	case MessageInfoRequest:
 		p := InfoRequestPacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageInfoReply:
 		p := InfoReplyPacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageConnectRequest:
 		p := ConnectRequestPacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageConnectResponse:
 		p := ConnectResponsePacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageHostPingRequest:
 		p := HostPingRequestPacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageHostPingResponse:
 		p := HostPingResponsePacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageRedirectorRequest:
 		p := RedirectorRequestPacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageRedirectorResponse:
 		p := RedirectorResponsePacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageRedirectorCloseRequest:
 		p := RedirectorCloseRequestPacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageRedirectorCloseResponse:
 		p := RedirectorCloseResponsePacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageDisconnectRequest:
 		p := DisconnectRequestPacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	case MessageDisconnectResponse:
 		p := DisconnectResponsePacket{}
 		if err := gobdecoder.Decode(&p); err != nil {
-			panic(err)
+			return err
 		}
 		d.Envelope.Payload = p
 	default:

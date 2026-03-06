@@ -24,7 +24,9 @@ func (mem *Syncslice[V]) All() []V {
 	defer mem.mutex.RUnlock()
 	mem.mutex.RLock()
 
-	return mem.Data
+	cp := make([]V, len(mem.Data))
+	copy(cp, mem.Data)
+	return cp
 }
 
 func (mem *Syncslice[V]) Get(key int) V {
