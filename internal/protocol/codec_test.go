@@ -316,12 +316,11 @@ func (p *partialReader) Read(buf []byte) (int, error) {
 	return p.r.Read(buf)
 }
 
-// TestDecoder_PartialRead_Corrupts verifies decoder behaviour when the underlying
-// reader returns fewer bytes than the framed payload size (simulates a slow network).
-// Using io.Reader.Read() instead of io.ReadFull() means only part of the gob payload
-// may be consumed; Decode() must return an error or produce correct data — never
-// silently produce wrong data.
-func TestDecoder_PartialRead_Corrupts(t *testing.T) {
+// TestDecoder_PartialRead_DecodesCorrectly verifies that the decoder produces the
+// correct payload when the underlying reader returns fewer bytes per call than
+// requested (simulates a slow or fragmented network stream). io.ReadFull retries
+// until the full payload is buffered, so partial reads must not corrupt the result.
+func TestDecoder_PartialRead_DecodesCorrectly(t *testing.T) {
 	t.Parallel()
 
 	var encoded bytes.Buffer
@@ -334,19 +333,16 @@ func TestDecoder_PartialRead_Corrupts(t *testing.T) {
 	}
 
 	// Wrap in a partialReader that delivers only 1 byte per Read call.
-	// binary.Read uses io.ReadFull internally and handles partial reads correctly.
-	// The payload Read() call does not, so only 1 byte of the gob payload arrives.
 	slow := &partialReader{r: &encoded, maxPerRead: 1}
 	dec := NewDecoder(slow)
 
-	decodeErr := dec.Decode()
+	if err := dec.Decode(); err != nil {
+		t.Fatalf("Decode with partial reader: %v", err)
+	}
 
-	if decodeErr == nil {
-		// No error: verify the payload is actually correct (full read somehow succeeded).
-		p, ok := dec.Envelope.Payload.(ConnectRequestPacket)
-		if !ok || p.Address != "10.1.2.3" || p.Port != 443 {
-			t.Errorf("partial read produced wrong payload: got %+v", dec.Envelope.Payload)
-		}
+	p, ok := dec.Envelope.Payload.(ConnectRequestPacket)
+	if !ok || p.Address != "10.1.2.3" || p.Port != 443 {
+		t.Errorf("partial read produced wrong payload: got %+v", dec.Envelope.Payload)
 	}
 }
 

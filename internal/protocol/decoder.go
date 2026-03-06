@@ -31,7 +31,7 @@ func (d *LigoloDecoder) Decode() error {
 
 	payload := make([]byte, d.Envelope.Size)
 
-	if _, err := d.reader.Read(payload); err != nil {
+	if _, err := io.ReadFull(d.reader, payload); err != nil {
 		return err
 	}
 
