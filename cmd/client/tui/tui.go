@@ -67,9 +67,6 @@ func NewApp(operService *operator.OperatorService) *App {
 
 	app.SwitchToPage(app.credentials)
 
-	go app.autoRedraw()
-	go app.autoRefresh()
-
 	return app
 }
 
@@ -80,28 +77,6 @@ func (app *App) Reset() {
 	app.SwitchToPage(app.credentials)
 }
 
-func (app *App) autoRedraw() {
-	tick := time.NewTicker(500 * time.Millisecond)
-	for {
-		select {
-		case <-tick.C:
-			app.Draw()
-		}
-	}
-}
-
-func (app *App) autoRefresh() {
-	ticker := time.NewTicker(30 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			if app.IsConnected() {
-				app.dashboard.RefreshData()
-				app.admin.RefreshData()
-			}
-		}
-	}
-}
 
 func (app *App) SwitchToPage(p pages.Page) {
 	app.pages.RemovePage(app.currentPage)
@@ -159,6 +134,8 @@ func (app *App) initCredentials() {
 }
 
 func (app *App) initDashboard() {
+	app.dashboard.SetApp(&app.Application)
+
 	app.dashboard.SetAdminFunc(func() {
 		app.SwitchToPage(app.admin)
 	})
@@ -365,6 +342,8 @@ func (app *App) initDashboard() {
 }
 
 func (app *App) initAdmin() {
+	app.admin.SetApp(&app.Application)
+
 	app.admin.SetSwitchbackFunc(func() {
 		app.SwitchToPage(app.dashboard)
 	})
@@ -509,8 +488,10 @@ func (app *App) initAdmin() {
 func (app *App) HandleOperatorEvents() {
 	defer func() {
 		app.Disconnect()
-		app.Reset()
-		app.ShowError("Disconnected from the server", nil)
+		app.QueueUpdateDraw(func() {
+			app.Reset()
+			app.ShowError("Disconnected from the server", nil)
+		})
 	}()
 
 	eventStream, err := app.operator.Client().Join(context.Background(), &pb.Empty{})

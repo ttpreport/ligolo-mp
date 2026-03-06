@@ -16,6 +16,7 @@ import (
 type AdminPage struct {
 	tview.Pages
 
+	app       *tview.Application
 	flex      *tview.Flex
 	server    *widgets.ServerWidget
 	operators *widgets.OperatorsWidget
@@ -92,7 +93,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 						return
 					}
 
-					admin.RemovePage(export.GetID())
+					admin.app.QueueUpdateDraw(func() { admin.RemovePage(export.GetID()) })
 					admin.ShowInfo(fmt.Sprintf("Exported operator to %s", fullPath), cleanup)
 					admin.RefreshData()
 				})
@@ -220,7 +221,7 @@ func (admin *AdminPage) InputHandler() func(event *tcell.EventKey, setFocus func
 							return
 						}
 
-						admin.RemovePage(gen.GetID())
+						admin.app.QueueUpdateDraw(func() { admin.RemovePage(gen.GetID()) })
 						admin.ShowInfo(fmt.Sprintf("Created operator %s", oper.Name), nil)
 						admin.RefreshData()
 					})
@@ -261,29 +262,41 @@ func (admin *AdminPage) RefreshData() {
 
 	opers, err := admin.getOperators()
 	if err != nil {
-		admin.ShowError(fmt.Sprintf("Could not refresh operators: %s", err), nil)
+		admin.app.QueueUpdateDraw(func() {
+			admin.ShowError(fmt.Sprintf("Could not refresh operators: %s", err), nil)
+		})
 		return
 	}
-	admin.operators.SetData(opers)
 
 	certs, err := admin.getCertificates()
 	if err != nil {
-		admin.ShowError(fmt.Sprintf("Could not refresh certs: %s", err), nil)
+		admin.app.QueueUpdateDraw(func() {
+			admin.ShowError(fmt.Sprintf("Could not refresh certs: %s", err), nil)
+		})
 		return
 	}
-	admin.certs.SetData(certs)
 
-	config, operator, err := admin.getMetadata()
+	cfg, oper, err := admin.getMetadata()
 	if err != nil {
-		admin.ShowError(fmt.Sprintf("Could not fetch metadata: %s", err), nil)
+		admin.app.QueueUpdateDraw(func() {
+			admin.ShowError(fmt.Sprintf("Could not fetch metadata: %s", err), nil)
+		})
 		return
 	}
 
-	admin.server.SetData(config, operator)
+	admin.app.QueueUpdateDraw(func() {
+		admin.operators.SetData(opers)
+		admin.certs.SetData(certs)
+		admin.server.SetData(cfg, oper)
+	})
 }
 
 func (admin *AdminPage) SetMetadataFunc(f func() (*config.Config, *operator.Operator, error)) {
 	admin.getMetadata = f
+}
+
+func (admin *AdminPage) SetApp(app *tview.Application) {
+	admin.app = app
 }
 
 func (admin *AdminPage) SetOperator(oper *operator.Operator) {
@@ -327,38 +340,46 @@ func (admin *AdminPage) SetCertificatesFunc(f func() ([]*certificate.Certificate
 }
 
 func (admin *AdminPage) ShowError(text string, done func()) {
-	modal := modals.NewErrorModal()
-	modal.SetText(text)
-	modal.SetDoneFunc(func(_ int, _ string) {
-		admin.RemovePage(modal.GetID())
+	admin.app.QueueUpdateDraw(func() {
+		modal := modals.NewErrorModal()
+		modal.SetText(text)
+		modal.SetDoneFunc(func(_ int, _ string) {
+			admin.RemovePage(modal.GetID())
 
-		if done != nil {
-			done()
-		}
+			if done != nil {
+				done()
+			}
+		})
+		admin.AddPage(modal.GetID(), modal, true, true)
 	})
-	admin.AddPage(modal.GetID(), modal, true, true)
 }
 
 func (admin *AdminPage) ShowInfo(text string, done func()) {
-	modal := modals.NewInfoModal()
-	modal.SetText(text)
-	modal.SetDoneFunc(func(_ int, _ string) {
-		admin.RemovePage(modal.GetID())
+	admin.app.QueueUpdateDraw(func() {
+		modal := modals.NewInfoModal()
+		modal.SetText(text)
+		modal.SetDoneFunc(func(_ int, _ string) {
+			admin.RemovePage(modal.GetID())
 
-		if done != nil {
-			done()
-		}
+			if done != nil {
+				done()
+			}
+		})
+		admin.AddPage(modal.GetID(), modal, true, true)
 	})
-	admin.AddPage(modal.GetID(), modal, true, true)
 }
 
 func (admin *AdminPage) DoWithLoader(text string, action func()) {
 	go func() {
 		modal := modals.NewLoaderModal()
 		modal.SetText(text)
-		admin.AddPage(modal.GetID(), modal, true, true)
+		admin.app.QueueUpdateDraw(func() {
+			admin.AddPage(modal.GetID(), modal, true, true)
+		})
 		action()
-		admin.RemovePage(modal.GetID())
+		admin.app.QueueUpdateDraw(func() {
+			admin.RemovePage(modal.GetID())
+		})
 	}()
 }
 

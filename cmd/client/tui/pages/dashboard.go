@@ -18,6 +18,7 @@ import (
 type DashboardPage struct {
 	tview.Pages
 
+	app         *tview.Application
 	setFocus    func(tview.Primitive)
 	flex        *tview.Flex
 	server      *widgets.ServerWidget
@@ -159,12 +160,12 @@ func (dash *DashboardPage) initSessionsWidget() {
 				dash.DoWithLoader("Adding route...", func() {
 					err := dash.sessionAddRouteFunc(sess, cidr, metric, loopback)
 					if err != nil {
-						dash.RemovePage(route.GetID())
+						dash.app.QueueUpdateDraw(func() { dash.RemovePage(route.GetID()) })
 						dash.ShowError(fmt.Sprintf("Could not add route: %s", err), cleanup)
 						return
 					}
 
-					dash.RemovePage(route.GetID())
+					dash.app.QueueUpdateDraw(func() { dash.RemovePage(route.GetID()) })
 					dash.ShowInfo("Route added", cleanup)
 				})
 			})
@@ -182,12 +183,12 @@ func (dash *DashboardPage) initSessionsWidget() {
 				dash.DoWithLoader("Adding redirector...", func() {
 					err := dash.sessionAddRedirectorFunc(sess, from, to, proto)
 					if err != nil {
-						dash.RemovePage(redir.GetID())
+						dash.app.QueueUpdateDraw(func() { dash.RemovePage(redir.GetID()) })
 						dash.ShowError(fmt.Sprintf("Could not add route: %s", err), cleanup)
 						return
 					}
 
-					dash.RemovePage(redir.GetID())
+					dash.app.QueueUpdateDraw(func() { dash.RemovePage(redir.GetID()) })
 					dash.ShowInfo("Redirector added", cleanup)
 				})
 			})
@@ -240,12 +241,12 @@ func (dash *DashboardPage) initRoutesWidget() {
 				dash.DoWithLoader("Editing route...", func() {
 					err := dash.sessionEditRouteFunc(elem.Session, elem.Route.ID, cidr, metric, loopback)
 					if err != nil {
-						dash.RemovePage(routeEdit.GetID())
+						dash.app.QueueUpdateDraw(func() { dash.RemovePage(routeEdit.GetID()) })
 						dash.ShowError(fmt.Sprintf("Could not edit route: %s", err), cleanup)
 						return
 					}
 
-					dash.RemovePage(routeEdit.GetID())
+					dash.app.QueueUpdateDraw(func() { dash.RemovePage(routeEdit.GetID()) })
 					dash.ShowInfo("Route edited", cleanup)
 				})
 			})
@@ -263,12 +264,12 @@ func (dash *DashboardPage) initRoutesWidget() {
 				dash.DoWithLoader("Moving route...", func() {
 					err := dash.sessionMoveRouteFunc(elem.Session, elem.Route.ID, targetSessionID)
 					if err != nil {
-						dash.RemovePage(routeMove.GetID())
+						dash.app.QueueUpdateDraw(func() { dash.RemovePage(routeMove.GetID()) })
 						dash.ShowError(fmt.Sprintf("Could not move route: %s", err), cleanup)
 						return
 					}
 
-					dash.RemovePage(routeMove.GetID())
+					dash.app.QueueUpdateDraw(func() { dash.RemovePage(routeMove.GetID()) })
 					dash.ShowInfo("Route moved", cleanup)
 				})
 			})
@@ -367,7 +368,7 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 							return
 						}
 
-						dash.RemovePage(gen.GetID())
+						dash.app.QueueUpdateDraw(func() { dash.RemovePage(gen.GetID()) })
 						dash.ShowInfo(fmt.Sprintf("Agent binary saved to %s", fullPath), nil)
 					})
 				})
@@ -385,7 +386,7 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 							return
 						}
 
-						dash.RemovePage(trace.GetID())
+						dash.app.QueueUpdateDraw(func() { dash.RemovePage(trace.GetID()) })
 						dash.ShowText(fmt.Sprintf("Tracing %s", address), strings.Join(routes, "\n"), nil)
 					})
 				})
@@ -419,6 +420,10 @@ func (dash *DashboardPage) Focus(delegate func(p tview.Primitive)) {
 
 func (dash *DashboardPage) GetID() string {
 	return "dashboard"
+}
+
+func (dash *DashboardPage) SetApp(app *tview.Application) {
+	dash.app = app
 }
 
 func (dash *DashboardPage) SetOperator(oper *operator.Operator) {
@@ -488,23 +493,28 @@ func (dash *DashboardPage) SetTracerouteFunc(f func(string) ([]string, error)) {
 func (dash *DashboardPage) RefreshData() {
 	data, err := dash.fetchData()
 	if err != nil {
-		dash.ShowError(fmt.Sprintf("Could not fetch data: %s", err), nil)
+		dash.app.QueueUpdateDraw(func() {
+			dash.ShowError(fmt.Sprintf("Could not fetch data: %s", err), nil)
+		})
 		return
 	}
 
-	dash.data = data
-	dash.sessions.SetData(data)
-	dash.interfaces.SetData(data)
-	dash.routes.SetData(data)
-	dash.redirectors.SetData(data)
-
-	config, operator, err := dash.getMetadata()
+	cfg, oper, err := dash.getMetadata()
 	if err != nil {
-		dash.ShowError(fmt.Sprintf("Could not fetch metadata: %s", err), nil)
+		dash.app.QueueUpdateDraw(func() {
+			dash.ShowError(fmt.Sprintf("Could not fetch metadata: %s", err), nil)
+		})
 		return
 	}
 
-	dash.server.SetData(config, operator)
+	dash.app.QueueUpdateDraw(func() {
+		dash.data = data
+		dash.sessions.SetData(data)
+		dash.interfaces.SetData(data)
+		dash.routes.SetData(data)
+		dash.redirectors.SetData(data)
+		dash.server.SetData(cfg, oper)
+	})
 }
 
 func (dash *DashboardPage) GetData() []*session.Session {
@@ -532,9 +542,13 @@ func (dash *DashboardPage) DoWithLoader(text string, action func()) {
 	go func() {
 		modal := modals.NewLoaderModal()
 		modal.SetText(text)
-		dash.AddPage(modal.GetID(), modal, true, true)
+		dash.app.QueueUpdateDraw(func() {
+			dash.AddPage(modal.GetID(), modal, true, true)
+		})
 		action()
-		dash.RemovePage(modal.GetID())
+		dash.app.QueueUpdateDraw(func() {
+			dash.RemovePage(modal.GetID())
+		})
 	}()
 }
 
@@ -552,35 +566,41 @@ func (dash *DashboardPage) DoWithConfirm(text string, action func()) {
 }
 
 func (dash *DashboardPage) ShowError(text string, done func()) {
-	modal := modals.NewErrorModal()
-	modal.SetText(text)
-	modal.SetDoneFunc(func(_ int, _ string) {
-		dash.RemovePage(modal.GetID())
+	dash.app.QueueUpdateDraw(func() {
+		modal := modals.NewErrorModal()
+		modal.SetText(text)
+		modal.SetDoneFunc(func(_ int, _ string) {
+			dash.RemovePage(modal.GetID())
 
-		if done != nil {
-			done()
-		}
+			if done != nil {
+				done()
+			}
+		})
+		dash.AddPage(modal.GetID(), modal, true, true)
 	})
-	dash.AddPage(modal.GetID(), modal, true, true)
 }
 
 func (dash *DashboardPage) ShowInfo(text string, done func()) {
-	modal := modals.NewInfoModal()
-	modal.SetText(text)
-	modal.SetDoneFunc(func(_ int, _ string) {
-		dash.RemovePage(modal.GetID())
+	dash.app.QueueUpdateDraw(func() {
+		modal := modals.NewInfoModal()
+		modal.SetText(text)
+		modal.SetDoneFunc(func(_ int, _ string) {
+			dash.RemovePage(modal.GetID())
 
-		if done != nil {
-			done()
-		}
+			if done != nil {
+				done()
+			}
+		})
+		dash.AddPage(modal.GetID(), modal, true, true)
 	})
-	dash.AddPage(modal.GetID(), modal, true, true)
 }
 
 func (dash *DashboardPage) ShowText(title string, text string, done func()) {
-	modal := modals.NewTextModal(title, text)
-	modal.SetDoneFunc(func() {
-		dash.RemovePage(modal.GetID())
+	dash.app.QueueUpdateDraw(func() {
+		modal := modals.NewTextModal(title, text)
+		modal.SetDoneFunc(func() {
+			dash.RemovePage(modal.GetID())
+		})
+		dash.AddPage(modal.GetID(), modal, true, true)
 	})
-	dash.AddPage(modal.GetID(), modal, true, true)
 }
