@@ -94,6 +94,7 @@ func (ss *SessionService) KillSession(sessID string) (*Session, error) {
 	}
 
 	sess.Disconnect()
+	sess.CleanUp()
 
 	return sess, ss.repo.Remove(sess)
 }
