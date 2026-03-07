@@ -14,7 +14,7 @@
 - Automatic TUN management
 - Auto-restoring routing
 - Unlimited concurrent relays
-- SOCKS and HTTP proxy support
+- SOCKS and HTTP proxy support (including SSPI/SPNEGO authentication)
 - Cross-platform agent compatible with Linux/FreeBSD/MacOS/Windows 7+
 - Routing to the loopback of target machine (no more port forwarding)
 - Listeners are independent redirectors
