@@ -80,7 +80,7 @@ func (admin *AdminPage) initOperatorsWidget() {
 		cleanup := func() {
 			admin.RemovePage(menu.GetID())
 			admin.setFocus(admin.operators)
-			admin.RefreshData()
+			go admin.RefreshData()
 		}
 
 		menu.AddItem(modals.NewMenuModalElem("Export", func() {
@@ -154,7 +154,7 @@ func (admin *AdminPage) initCertsWidget() {
 		cleanup := func() {
 			admin.RemovePage(menu.GetID())
 			admin.setFocus(admin.certs)
-			admin.RefreshData()
+			go admin.RefreshData()
 		}
 
 		menu.AddItem(modals.NewMenuModalElem("Regenerate", func() {
