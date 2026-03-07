@@ -1,4 +1,4 @@
-GO_VER := 1.20
+GO_VER := 1.24.0
 BLOAT_FILES := AUTHORS CONTRIBUTORS PATENTS VERSION favicon.ico robots.txt SECURITY.md CONTRIBUTING.md LICENSE README.md ./doc ./test ./api ./misc
 GARBLE_VER := 0.10.1
 

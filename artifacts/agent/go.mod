@@ -1,8 +1,12 @@
 module github.com/ttpreport/ligolo-mp-agent
 
-go 1.20
+go 1.24
+
+toolchain go1.24.9
 
 require (
+	github.com/Azure/go-ntlmssp v0.1.0
+	github.com/alexbrainman/sspi v0.0.0-20250919150558-7d374ff0d59e
 	github.com/go-ping/ping v1.2.0
 	github.com/hashicorp/yamux v0.1.2
 	golang.org/x/net v0.35.0

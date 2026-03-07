@@ -35,6 +35,7 @@ func NewAssetsService(cfg *config.Config, repo *AssetRepository) *AssetService {
 			"socks5h",
 			"http",
 			"https",
+			"ntlm",
 		},
 	}
 }

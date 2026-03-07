@@ -40,6 +40,7 @@ func main() {
 	proxy.RegisterDialerType("https", connectproxy.HttpsHandler(timeout, &tls.Config{
 		InsecureSkipVerify: true,
 	}))
+	proxy.RegisterDialerType("ntlm", connectproxy.HttpHandler(timeout))
 
 	var proxyServer = `{{ .ProxyServer }}`
 	var servers = strings.Split(`{{ .Servers }}`, "\n")

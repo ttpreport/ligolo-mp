@@ -93,8 +93,11 @@ func GarbleCmd(config GoConfig, cwd string, command []string) ([]byte, error) {
 	slog.Debug("Running garble command", slog.Any("cmd", cmd), slog.Any("env", cmd.Env))
 
 	err := cmd.Run()
+	if err != nil {
+		return stdout.Bytes(), fmt.Errorf("%w: %s", err, stderr.String())
+	}
 
-	return stdout.Bytes(), err
+	return stdout.Bytes(), nil
 }
 
 // GoCmd - Execute a go command
@@ -120,8 +123,11 @@ func GoCmd(config GoConfig, cwd string, command []string) ([]byte, error) {
 	slog.Debug("Running go command", slog.Any("cmd", cmd), slog.Any("env", cmd.Env))
 
 	err := cmd.Run()
+	if err != nil {
+		return stdout.Bytes(), fmt.Errorf("%w: %s", err, stderr.String())
+	}
 
-	return stdout.Bytes(), err
+	return stdout.Bytes(), nil
 }
 
 // GoBuild - Execute a go build command, returns stdout/error
