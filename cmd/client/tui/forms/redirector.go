@@ -15,9 +15,15 @@ var (
 		Hint: "Address to send traffic to.\n\nExample:\n1.2.3.4:7331",
 	}
 
+	redirector_proxy = FormVal[string]{
+		Hint: "If needed, the proxy to forward traffic to.\n\nExample:\nhttp://proxy.example.com:1234",
+	}
+
 	redirector_protocol = FormVal[FormSelectVal]{
 		Hint: "Network protocol to use",
 	}
+
+
 )
 
 type AddRedirectorForm struct {
@@ -66,6 +72,17 @@ func NewAddRedirectorForm() *AddRedirectorForm {
 		redirector_to.Last = text
 	})
 	page.form.AddFormItem(toField)
+
+	proxyField := tview.NewInputField()
+	proxyField.SetLabel("Proxy")
+	proxyField.SetText(redirector_proxy.Last)
+	proxyField.SetFocusFunc(func() {
+		hintBox.SetText(redirector_proxy.Hint)
+	})
+	proxyField.SetChangedFunc(func(text string) {
+		redirector_proxy.Last = text
+	})
+	page.form.AddFormItem(proxyField)
 
 	protocolField := tview.NewDropDown()
 	protocolField.SetLabel("Protocol")
