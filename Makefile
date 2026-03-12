@@ -58,13 +58,15 @@ agent:
 	cd artifacts/agent && go mod vendor
 	cd artifacts/agent && zip -r ../agent.zip .
 
+
 .PHONY: server
+# -mod=vendor
 server:
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -mod=vendor -trimpath -o ligolo-mp ./cmd/server/
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -trimpath -mod=vendor -o ligolo-mp ./cmd/server/
 
 .PHONY: client
 client:
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -mod=vendor -trimpath -o ligolo-mp-client ./cmd/client/
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -trimpath -o ligolo-mp-client ./cmd/client/ # -mod=vendor
 
 .PHONY: protobuf
 protobuf:
@@ -81,3 +83,6 @@ install:
 .PHONY: service
 service:
 	./install_service.sh
+
+.PHONY: all
+all: agent server client
