@@ -81,3 +81,6 @@ install:
 .PHONY: service
 service:
 	./install_service.sh
+
+.PHONY: all
+all: agent server client
