@@ -264,13 +264,14 @@ func (app *App) initDashboard() {
 		return err
 	})
 
-	app.dashboard.SetSessionAddRedirectorFunc(func(sess *session.Session, from string, to string, proto string) error {
+	app.dashboard.SetSessionAddRedirectorFunc(func(sess *session.Session, from string, to string, proxy string, proto string) error {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		_, err := app.operator.Client().AddRedirector(ctx, &pb.AddRedirectorReq{
 			SessionID: sess.ID,
 			From:      from,
 			To:        to,
+			Proxy:     proxy,
 			Protocol:  proto,
 		})
 		return err

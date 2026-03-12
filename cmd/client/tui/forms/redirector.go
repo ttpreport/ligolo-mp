@@ -121,11 +121,11 @@ func (page *AddRedirectorForm) GetID() string {
 	return "addroute_page"
 }
 
-func (page *AddRedirectorForm) SetSubmitFunc(f func(string, string, string)) {
+func (page *AddRedirectorForm) SetSubmitFunc(f func(string, string, string, string)) {
 	btnId := page.form.GetButtonIndex("Submit")
 	submitBtn := page.form.GetButton(btnId)
 	submitBtn.SetSelectedFunc(func() {
-		f(redirector_from.Last, redirector_to.Last, redirector_protocol.Last.Value)
+		f(redirector_from.Last, redirector_to.Last, redirector_proxy.Last, redirector_protocol.Last.Value)
 	})
 }
 

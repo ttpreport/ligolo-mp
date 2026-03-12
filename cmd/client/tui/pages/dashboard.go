@@ -40,7 +40,7 @@ type DashboardPage struct {
 	sessionEditRouteFunc        func(*session.Session, string, string, int, bool) error
 	sessionMoveRouteFunc        func(*session.Session, string, string) error
 	sessionRemoveRouteFunc      func(*session.Session, string) error
-	sessionAddRedirectorFunc    func(*session.Session, string, string, string) error
+	sessionAddRedirectorFunc    func(*session.Session, string, string, string, string) error
 	sessionRemoveRedirectorFunc func(*session.Session, string) error
 	sessionRemoveFunc           func(*session.Session) error
 	tracerouteFunc              func(string) ([]string, error)
@@ -179,9 +179,9 @@ func (dash *DashboardPage) initSessionsWidget() {
 
 		menu.AddItem(modals.NewMenuModalElem("Add redirector", func() {
 			redir := forms.NewAddRedirectorForm()
-			redir.SetSubmitFunc(func(from string, to string, proto string) {
+			redir.SetSubmitFunc(func(from string, to string, proxy string, proto string) {
 				dash.DoWithLoader("Adding redirector...", func() {
-					err := dash.sessionAddRedirectorFunc(sess, from, to, proto)
+					err := dash.sessionAddRedirectorFunc(sess, from, to, proxy, proto)
 					if err != nil {
 						dash.app.QueueUpdateDraw(func() { dash.RemovePage(redir.GetID()) })
 						dash.ShowError(fmt.Sprintf("Could not add route: %s", err), cleanup)
@@ -474,7 +474,7 @@ func (dash *DashboardPage) SetSessionRemoveRouteFunc(f func(*session.Session, st
 	dash.sessionRemoveRouteFunc = f
 }
 
-func (dash *DashboardPage) SetSessionAddRedirectorFunc(f func(*session.Session, string, string, string) error) {
+func (dash *DashboardPage) SetSessionAddRedirectorFunc(f func(*session.Session, string, string, string, string) error) {
 	dash.sessionAddRedirectorFunc = f
 }
 
