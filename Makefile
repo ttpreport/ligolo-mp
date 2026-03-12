@@ -62,11 +62,11 @@ agent:
 .PHONY: server
 # -mod=vendor
 server:
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -trimpath -mod=vendor -o ligolo-mp ./cmd/server/
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -mod=vendor -trimpath  -o ligolo-mp ./cmd/server/
 
 .PHONY: client
 client:
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -trimpath -o ligolo-mp-client ./cmd/client/ # -mod=vendor
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -mod=vendor -trimpath -o ligolo-mp-client ./cmd/client/
 
 .PHONY: protobuf
 protobuf:
