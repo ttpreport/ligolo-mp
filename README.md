@@ -38,9 +38,9 @@ ligolo-mp [options]
   -insecure-agents
         Disable certificate verification for agents
   -rotate-pki
-        Regenerate all certificates (CA + server) and exit
+        Regenerate all certificates (CA + server) 
   -version
-        Print version and exit
+        Print version 
   -v    Enable verbose logging
 ```
 
@@ -50,7 +50,7 @@ ligolo-mp [options]
 ligolo-mp-client [options]
 
   -version
-        Print version and exit
+        Print version 
   -v    Enable verbose logging
 ```
 

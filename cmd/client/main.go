@@ -18,7 +18,7 @@ import (
 
 func main() {
 	var verbose = flag.Bool("v", false, "enable verbose mode")
-	var showVersion = flag.Bool("version", false, "print version and exit")
+	var showVersion = flag.Bool("version", false, "print version")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "ligolo-mp-client %s\n\nUsage:\n", version.Version)
