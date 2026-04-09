@@ -17,6 +17,7 @@ import (
 type CredentialsPage struct {
 	tview.Pages
 
+	app   *tview.Application
 	table *tview.Table
 
 	data []*operator.Operator
@@ -111,6 +112,10 @@ func (creds *CredentialsPage) GetElem(id int) *operator.Operator {
 	return nil
 }
 
+func (creds *CredentialsPage) SetApp(app *tview.Application) {
+	creds.app = app
+}
+
 func (creds *CredentialsPage) SetDataFunc(f func() ([]*operator.Operator, error)) {
 	creds.getData = f
 }
@@ -142,10 +147,13 @@ func (creds *CredentialsPage) initCredentials() {
 				creds.DoWithLoader("Connecting...", func() {
 					err := creds.connect(oper)
 					if err != nil {
-						creds.ShowError(fmt.Sprintf("Could not connect: %s", err), cleanup)
+						creds.app.QueueUpdateDraw(func() {
+							creds.ShowError(fmt.Sprintf("Could not connect: %s", err), cleanup)
+						})
+						return
 					}
 
-					cleanup()
+					creds.app.QueueUpdateDraw(cleanup)
 				})
 			}))
 
@@ -154,11 +162,15 @@ func (creds *CredentialsPage) initCredentials() {
 					creds.DoWithLoader("Removing credentials...", func() {
 						err := creds.deleteCred(oper)
 						if err != nil {
-							creds.ShowError(fmt.Sprintf("Could not remove credentials: %s", err), cleanup)
+							creds.app.QueueUpdateDraw(func() {
+								creds.ShowError(fmt.Sprintf("Could not remove credentials: %s", err), cleanup)
+							})
 							return
 						}
 
-						creds.ShowInfo("Credentials removed", cleanup)
+						creds.app.QueueUpdateDraw(func() {
+							creds.ShowInfo("Credentials removed", cleanup)
+						})
 					})
 				})
 			}))
@@ -224,9 +236,13 @@ func (creds *CredentialsPage) DoWithLoader(text string, action func()) {
 	go func() {
 		modal := modals.NewLoaderModal()
 		modal.SetText(text)
-		creds.AddPage(modal.GetID(), modal, true, true)
+		creds.app.QueueUpdateDraw(func() {
+			creds.AddPage(modal.GetID(), modal, true, true)
+		})
 		action()
-		creds.RemovePage(modal.GetID())
+		creds.app.QueueUpdateDraw(func() {
+			creds.RemovePage(modal.GetID())
+		})
 	}()
 }
 
@@ -235,7 +251,6 @@ func (creds *CredentialsPage) ShowError(text string, done func()) {
 	modal.SetText(text)
 	modal.SetDoneFunc(func(_ int, _ string) {
 		creds.RemovePage(modal.GetID())
-
 		if done != nil {
 			done()
 		}
@@ -248,7 +263,6 @@ func (creds *CredentialsPage) ShowInfo(text string, done func()) {
 	modal.SetText(text)
 	modal.SetDoneFunc(func(_ int, _ string) {
 		creds.RemovePage(modal.GetID())
-
 		if done != nil {
 			done()
 		}

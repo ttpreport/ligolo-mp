@@ -30,7 +30,7 @@ func (service *OperatorService) Init() error {
 	}
 
 	if len(operators) < 1 {
-		_, err := service.NewOperator("admin", true, service.config.OperatorAddr)
+		_, err := service.NewOperator("admin", true, connectable(service.config.OperatorAddr))
 		if err != nil {
 			return err
 		}

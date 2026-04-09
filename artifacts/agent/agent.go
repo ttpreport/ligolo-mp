@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,9 +50,20 @@ func main() {
 	var CACert = []byte(`{{ .CACert }}`)
 	var ignoreEnvProxy, _ = strconv.ParseBool(`{{ .IgnoreEnvProxy }}`)
 
-	flag.Usage = func() {}
-	var insecure = flag.Bool("insecure", false, "")
-	var serverOverride = flag.String("server", "", "")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s\n\nUsage:\n", filepath.Base(os.Args[0]))
+		fmt.Fprintf(os.Stderr, "  -bind string\n")
+		fmt.Fprintf(os.Stderr, "    \tListen for server connections on this address (bind/reverse mode).\n")
+		fmt.Fprintf(os.Stderr, "    \tExample: -bind 0.0.0.0:4444\n")
+		fmt.Fprintf(os.Stderr, "  -server string\n")
+		fmt.Fprintf(os.Stderr, "    \tOverride the embedded server address.\n")
+		fmt.Fprintf(os.Stderr, "    \tExample: -server 1.2.3.4:11601\n")
+		fmt.Fprintf(os.Stderr, "  -insecure\n")
+		fmt.Fprintf(os.Stderr, "    \tDisable TLS certificate verification (use with caution).\n")
+	}
+	var insecure = flag.Bool("insecure", false, "disable TLS certificate verification")
+	var serverOverride = flag.String("server", "", "override embedded server address (e.g. 1.2.3.4:11601)")
+	var bindAddr = flag.String("bind", "", "listen for server connections on this address (bind mode, e.g. 0.0.0.0:4444)")
 	flag.Parse()
 
 	if *serverOverride != "" {
@@ -59,6 +71,17 @@ func main() {
 	}
 
 	redirectorMap = make(map[string]relay.Redirector)
+
+	if *bindAddr != "" {
+		// Bind mode: agent listens, server connects.
+		for {
+			func() {
+				defer func() { recover() }() //nolint:errcheck
+				runBind(*bindAddr, *insecure, AgentCert, AgentKey, CACert)
+			}()
+			time.Sleep(5 * time.Second)
+		}
+	}
 
 	// Outer loop restarts the connection loop after a panic without growing the
 	// call stack. Each iteration wraps run() in a panic-recovering closure so
@@ -162,6 +185,80 @@ func run(servers []string, proxyServer string, insecure, ignoreEnvProxy bool, ti
 	}
 }
 
+// runBind runs the agent in bind mode: it listens for an incoming connection
+// from the server rather than dialing out. The agent is the TLS server;
+// yamux roles are unchanged (agent=yamux.Server, server=yamux.Client).
+func runBind(addr string, insecure bool, AgentCert, AgentKey, CACert []byte) {
+	ca := x509.NewCertPool()
+	if ok := ca.AppendCertsFromPEM(CACert); !ok {
+		return
+	}
+
+	mtlsCert, err := tls.X509KeyPair(AgentCert, AgentKey)
+	if err != nil {
+		return
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{mtlsCert},
+		ClientAuth:   tls.RequireAnyClientCert,
+		ClientCAs:    ca,
+		MinVersion:   tls.VersionTLS13,
+		MaxVersion:   tls.VersionTLS13,
+		InsecureSkipVerify: true,
+		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
+			cert, err := x509.ParseCertificate(rawCerts[0])
+			if err != nil {
+				return err
+			}
+			if insecure {
+				return nil
+			}
+			_, err = cert.Verify(x509.VerifyOptions{Roots: ca})
+			return err
+		},
+	}
+
+	listener, err := tls.Listen("tcp", addr, tlsConfig)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[-] Failed to listen on %s: %v\n", addr, err)
+		return
+	}
+	defer listener.Close()
+
+	fmt.Fprintf(os.Stderr, "[*] Listening on %s (bind mode)\n", addr)
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		fmt.Fprintf(os.Stderr, "[+] Server connected from %s\n", conn.RemoteAddr())
+		go handleBindConn(conn)
+	}
+}
+
+// handleBindConn wraps an accepted TLS connection as a yamux.Server session
+// and processes incoming commands from the server.
+func handleBindConn(conn net.Conn) {
+	yamuxConf := yamux.DefaultConfig()
+	yamuxConf.LogOutput = io.Discard
+	yamuxConn, err := yamux.Server(conn, yamuxConf)
+	if err != nil {
+		conn.Close()
+		return
+	}
+
+	for {
+		stream, err := yamuxConn.Accept()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[-] Server disconnected\n")
+			return
+		}
+		go handleConn(stream)
+	}
+}
+
 func connect(conn net.Conn, config *tls.Config) error {
 	tlsConn := tls.Client(conn, config)
 
@@ -172,9 +269,12 @@ func connect(conn net.Conn, config *tls.Config) error {
 		return err
 	}
 
+	fmt.Fprintf(os.Stderr, "[+] Connected to %s\n", conn.RemoteAddr())
+
 	for {
 		conn, err := yamuxConn.Accept()
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "[-] Disconnected from server\n")
 			return err
 		}
 		go handleConn(conn)

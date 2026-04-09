@@ -16,6 +16,7 @@ import (
 	"github.com/ttpreport/ligolo-mp/v2/internal/operator"
 	"github.com/ttpreport/ligolo-mp/v2/internal/session"
 	"github.com/ttpreport/ligolo-mp/v2/internal/storage"
+	"github.com/ttpreport/ligolo-mp/v2/internal/version"
 	"github.com/ttpreport/ligolo-mp/v2/pkg/logger"
 )
 
@@ -27,8 +28,20 @@ func main() {
 	var maxConnectionHandler = flag.Int("max-connection", 1024, "per tunnel connection pool size")
 	var operatorAddr = flag.String("operator-addr", "0.0.0.0:58008", "Address for operators connections")
 	var insecureAgents = flag.Bool("insecure-agents", false, "Disable certificate verification for agents (insecure!)")
+	var showVersion = flag.Bool("version", false, "print version and exit")
+	var regenCerts = flag.Bool("rotate-pki", false, "regenerate all certificates (CA + server certs) and exit")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "ligolo-mp %s\n\nUsage:\n", version.Version)
+		flag.PrintDefaults()
+	}
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("ligolo-mp %s\n", version.Version)
+		os.Exit(0)
+	}
 
 	loggingOpts := &slog.HandlerOptions{}
 	if *verbose {
@@ -90,6 +103,18 @@ func main() {
 
 	crlService := crl.NewCRLService(crlRepo)
 	certService := certificate.NewCertificateService(certRepo, crlService)
+
+	if *regenCerts {
+		fmt.Println("Regenerating all certificates...")
+		if err := certService.RegenerateAll(); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Done. All server certificates have been regenerated.")
+		fmt.Println("WARNING: All existing operator profiles are now invalid and must be re-exported.")
+		os.Exit(0)
+	}
+
 	sessService := session.NewSessionService(cfg, sessRepo)
 	operService := operator.NewOperatorService(cfg, operRepo, certService)
 	assetService := asset.NewAssetsService(cfg, assetRepo)
@@ -117,12 +142,17 @@ func main() {
 		slog.SetDefault(logHandler)
 	}
 
+	agentHandler, err := agents.Run(cfg, certService, sessService)
+	if err != nil {
+		panic(fmt.Sprintf("could not start agent server: %v", err))
+	}
+
 	quit := make(chan error)
 	go func() {
-		quit <- agents.Run(cfg, certService, sessService)
+		quit <- <-agentHandler.Done()
 	}()
 	go func() {
-		quit <- rpc.Run(cfg, certService, sessService, operService, assetService)
+		quit <- rpc.Run(cfg, certService, sessService, operService, assetService, agentHandler)
 	}()
 
 	if *daemon {

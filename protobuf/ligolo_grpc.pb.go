@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
+	Ligolo_ConnectAgent_FullMethodName    = "/ligolo.Ligolo/ConnectAgent"
 	Ligolo_Join_FullMethodName            = "/ligolo.Ligolo/Join"
 	Ligolo_GetMetadata_FullMethodName     = "/ligolo.Ligolo/GetMetadata"
 	Ligolo_GetSessions_FullMethodName     = "/ligolo.Ligolo/GetSessions"
@@ -71,6 +72,7 @@ type LigoloClient interface {
 	DemoteOperator(ctx context.Context, in *DemoteOperatorReq, opts ...grpc.CallOption) (*Empty, error)
 	GenerateAgent(ctx context.Context, in *GenerateAgentReq, opts ...grpc.CallOption) (*GenerateAgentResp, error)
 	Traceroute(ctx context.Context, in *TracerouteReq, opts ...grpc.CallOption) (*TracerouteResp, error)
+	ConnectAgent(ctx context.Context, in *ConnectAgentReq, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type ligoloClient struct {
@@ -311,6 +313,15 @@ func (c *ligoloClient) Traceroute(ctx context.Context, in *TracerouteReq, opts .
 	return out, nil
 }
 
+func (c *ligoloClient) ConnectAgent(ctx context.Context, in *ConnectAgentReq, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, Ligolo_ConnectAgent_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LigoloServer is the server API for Ligolo service.
 // All implementations must embed UnimplementedLigoloServer
 // for forward compatibility
@@ -338,6 +349,7 @@ type LigoloServer interface {
 	DemoteOperator(context.Context, *DemoteOperatorReq) (*Empty, error)
 	GenerateAgent(context.Context, *GenerateAgentReq) (*GenerateAgentResp, error)
 	Traceroute(context.Context, *TracerouteReq) (*TracerouteResp, error)
+	ConnectAgent(context.Context, *ConnectAgentReq) (*Empty, error)
 	mustEmbedUnimplementedLigoloServer()
 }
 
@@ -413,6 +425,9 @@ func (UnimplementedLigoloServer) GenerateAgent(context.Context, *GenerateAgentRe
 }
 func (UnimplementedLigoloServer) Traceroute(context.Context, *TracerouteReq) (*TracerouteResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Traceroute not implemented")
+}
+func (UnimplementedLigoloServer) ConnectAgent(context.Context, *ConnectAgentReq) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConnectAgent not implemented")
 }
 func (UnimplementedLigoloServer) mustEmbedUnimplementedLigoloServer() {}
 
@@ -844,6 +859,24 @@ func _Ligolo_Traceroute_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Ligolo_ConnectAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConnectAgentReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LigoloServer).ConnectAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Ligolo_ConnectAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LigoloServer).ConnectAgent(ctx, req.(*ConnectAgentReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Ligolo_ServiceDesc is the grpc.ServiceDesc for Ligolo service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -938,6 +971,10 @@ var Ligolo_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Traceroute",
 			Handler:    _Ligolo_Traceroute_Handler,
+		},
+		{
+			MethodName: "ConnectAgent",
+			Handler:    _Ligolo_ConnectAgent_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

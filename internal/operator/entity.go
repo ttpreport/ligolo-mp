@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -57,6 +58,19 @@ func (oper *Operator) ToBytes() ([]byte, error) {
 	return operBytes, nil
 }
 
+// connectable replaces a wildcard host (0.0.0.0 / ::) with 127.0.0.1 so
+// operator profiles that store the server's listen address are still dialable.
+func connectable(addr string) string {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+	if host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	return net.JoinHostPort(host, port)
+}
+
 func (oper *Operator) Connect() error {
 	if oper.conn != nil {
 		oper.Disconnect()
@@ -98,7 +112,7 @@ func (oper *Operator) Connect() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, oper.Server,
+	conn, err := grpc.DialContext(ctx, connectable(oper.Server),
 		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(20*1024*1024)),
 		grpc.WithBlock(),

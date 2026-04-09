@@ -87,6 +87,7 @@ func (app *App) SwitchToPage(p pages.Page) {
 }
 
 func (app *App) initCredentials() {
+	app.credentials.SetApp(&app.Application)
 	app.credentials.SetDataFunc(func() ([]*operator.Operator, error) {
 		return app.operService.AllOperators()
 	})
@@ -101,9 +102,11 @@ func (app *App) initCredentials() {
 			return err
 		}
 
-		app.dashboard.SetOperator(oper)
-		app.admin.SetOperator(oper)
-		app.SwitchToPage(app.dashboard)
+		app.QueueUpdateDraw(func() {
+			app.dashboard.SetOperator(oper)
+			app.admin.SetOperator(oper)
+			app.SwitchToPage(app.dashboard)
+		})
 
 		return nil
 	})
@@ -183,6 +186,13 @@ func (app *App) initDashboard() {
 		}
 
 		return filepath.Abs(path)
+	})
+
+	app.dashboard.SetConnectBindAgentFunc(func(addr string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+		_, err := app.operator.Client().ConnectAgent(ctx, &pb.ConnectAgentReq{Address: addr})
+		return err
 	})
 
 	app.dashboard.SetSessionStartFunc(func(sess *session.Session) error {

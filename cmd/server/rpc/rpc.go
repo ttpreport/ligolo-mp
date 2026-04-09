@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/ttpreport/ligolo-mp/v2/cmd/server/agents"
 	"github.com/ttpreport/ligolo-mp/v2/internal/asset"
 	"github.com/ttpreport/ligolo-mp/v2/internal/certificate"
 	"github.com/ttpreport/ligolo-mp/v2/internal/config"
@@ -32,6 +33,7 @@ type ligoloServer struct {
 	certService   *certificate.CertificateService
 	operService   *operator.OperatorService
 	assetsService *asset.AssetService
+	agentHandler  *agents.AgentApiHandler
 }
 
 type ligoloConnection struct {
@@ -550,6 +552,21 @@ func (s *ligoloServer) GetMetadata(ctx context.Context, in *pb.Empty) (*pb.GetMe
 	}, nil
 }
 
+func (s *ligoloServer) ConnectAgent(ctx context.Context, in *pb.ConnectAgentReq) (*pb.Empty, error) {
+	slog.Debug("Received request to connect to bind agent", slog.Any("addr", in.Address))
+	oper := ctx.Value("operator").(*operator.Operator)
+	if !oper.IsAdmin {
+		return nil, errors.New("access denied")
+	}
+
+	if err := s.agentHandler.DialAgent(in.Address); err != nil {
+		return nil, fmt.Errorf("could not connect to bind agent: %w", err)
+	}
+
+	events.Publish(events.OK, "%s: connected to bind agent at '%s'", oper.Name, in.Address)
+	return &pb.Empty{}, nil
+}
+
 func (s *ligoloServer) operatorFromContext(ctx context.Context) (*operator.Operator, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
@@ -587,7 +604,7 @@ func (s *ligoloServer) unaryAuthInterceptor(ctx context.Context, req any, info *
 	)
 }
 
-func Run(config *config.Config, certService *certificate.CertificateService, sessService *session.SessionService, operService *operator.OperatorService, assetsService *asset.AssetService) error {
+func Run(config *config.Config, certService *certificate.CertificateService, sessService *session.SessionService, operService *operator.OperatorService, assetsService *asset.AssetService, agentHandler *agents.AgentApiHandler) error {
 	lis, err := net.Listen("tcp", config.OperatorAddr)
 	if err != nil {
 		slog.Error("Could not start operator server",
@@ -660,6 +677,7 @@ func Run(config *config.Config, certService *certificate.CertificateService, ses
 		certService:   certService,
 		operService:   operService,
 		assetsService: assetsService,
+		agentHandler:  agentHandler,
 	}
 	grpcServer := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)), grpc.UnaryInterceptor(ligoloServer.unaryAuthInterceptor))
 
