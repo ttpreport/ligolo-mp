@@ -185,6 +185,13 @@ func (app *App) initDashboard() {
 		return filepath.Abs(path)
 	})
 
+	app.dashboard.SetConnectBindAgentFunc(func(addr string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+		_, err := app.operator.Client().ConnectAgent(ctx, &pb.ConnectAgentReq{Address: addr})
+		return err
+	})
+
 	app.dashboard.SetSessionStartFunc(func(sess *session.Session) error {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()

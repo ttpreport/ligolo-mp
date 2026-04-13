@@ -33,6 +33,7 @@ type DashboardPage struct {
 	getMetadata                 func() (*config.Config, *operator.Operator, error)
 	adminFunc                   func()
 	generateFunc                func(path string, servers string, goos string, goarch string, obfuscate bool, proxy string, ignoreEnvProxy bool) (string, error)
+	connectBindAgentFunc        func(addr string) error
 	sessionStartFunc            func(*session.Session) error
 	sessionStopFunc             func(*session.Session) error
 	sessionRenameFunc           func(*session.Session, string) error
@@ -358,6 +359,26 @@ func (dash *DashboardPage) InputHandler() func(event *tcell.EventKey, setFocus f
 						break
 					}
 				}
+			case tcell.KeyCtrlB:
+				if !dash.operator.IsAdmin {
+					break
+				}
+				bindForm := forms.NewBindAgentForm()
+				bindForm.SetSubmitFunc(func(addr string) {
+					dash.DoWithLoader("Connecting to bind agent...", func() {
+						err := dash.connectBindAgentFunc(addr)
+						if err != nil {
+							dash.ShowError(fmt.Sprintf("Could not connect to bind agent: %s", err), nil)
+							return
+						}
+						dash.app.QueueUpdateDraw(func() { dash.RemovePage(bindForm.GetID()) })
+						dash.ShowInfo("Connected to bind agent", nil)
+					})
+				})
+				bindForm.SetCancelFunc(func() {
+					dash.RemovePage(bindForm.GetID())
+				})
+				dash.AddPage(bindForm.GetID(), bindForm, true, true)
 			case tcell.KeyCtrlN:
 				gen := forms.NewGenerateForm()
 				gen.SetSubmitFunc(func(path string, servers string, goos string, goarch string, obfuscate bool, proxy string, ignoreEnvProxy bool) {
@@ -446,6 +467,10 @@ func (dash *DashboardPage) SetGenerateFunc(f func(string, string, string, string
 	dash.generateFunc = f
 }
 
+func (dash *DashboardPage) SetConnectBindAgentFunc(f func(string) error) {
+	dash.connectBindAgentFunc = f
+}
+
 func (dash *DashboardPage) SetSessionStartFunc(f func(*session.Session) error) {
 	dash.sessionStartFunc = f
 }
@@ -530,7 +555,9 @@ func (dash *DashboardPage) GetNavBar() []widgets.NavBarElem {
 
 	if dash.operator.IsAdmin {
 		navbar = append([]widgets.NavBarElem{
-			widgets.NewNavBarElem(tcell.KeyCtrlA, "Admin")},
+			widgets.NewNavBarElem(tcell.KeyCtrlA, "Admin"),
+			widgets.NewNavBarElem(tcell.KeyCtrlB, "Bind Agent"),
+		},
 			navbar...,
 		)
 	}
