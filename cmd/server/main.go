@@ -16,6 +16,7 @@ import (
 	"github.com/ttpreport/ligolo-mp/v2/internal/operator"
 	"github.com/ttpreport/ligolo-mp/v2/internal/session"
 	"github.com/ttpreport/ligolo-mp/v2/internal/storage"
+	"github.com/ttpreport/ligolo-mp/v2/internal/version"
 	"github.com/ttpreport/ligolo-mp/v2/pkg/logger"
 )
 
@@ -27,8 +28,19 @@ func main() {
 	var maxConnectionHandler = flag.Int("max-connection", 1024, "per tunnel connection pool size")
 	var operatorAddr = flag.String("operator-addr", "0.0.0.0:58008", "Address for operators connections")
 	var insecureAgents = flag.Bool("insecure-agents", false, "Disable certificate verification for agents (insecure!)")
+	var showVersion = flag.Bool("version", false, "print version")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "ligolo-mp %s\n\nUsage:\n", version.Version)
+		flag.PrintDefaults()
+	}
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("ligolo-mp %s\n", version.Version)
+		os.Exit(0)
+	}
 
 	loggingOpts := &slog.HandlerOptions{}
 	if *verbose {
