@@ -27,6 +27,7 @@ func main() {
 	var maxConnectionHandler = flag.Int("max-connection", 1024, "per tunnel connection pool size")
 	var operatorAddr = flag.String("operator-addr", "0.0.0.0:58008", "Address for operators connections")
 	var insecureAgents = flag.Bool("insecure-agents", false, "Disable certificate verification for agents (insecure!)")
+	var regenCerts = flag.Bool("rotate-pki", false, "regenerate all certificates (CA + server certs)")
 
 	flag.Parse()
 
@@ -90,6 +91,18 @@ func main() {
 
 	crlService := crl.NewCRLService(crlRepo)
 	certService := certificate.NewCertificateService(certRepo, crlService)
+
+	if *regenCerts {
+		fmt.Println("Regenerating all certificates...")
+		if err := certService.RegenerateAll(); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Done. All server certificates have been regenerated.")
+		fmt.Println("WARNING: All existing operator profiles are now invalid and must be re-exported.")
+		os.Exit(0)
+	}
+
 	sessService := session.NewSessionService(cfg, sessRepo)
 	operService := operator.NewOperatorService(cfg, operRepo, certService)
 	assetService := asset.NewAssetsService(cfg, assetRepo)

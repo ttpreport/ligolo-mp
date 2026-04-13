@@ -84,6 +84,19 @@ func (cs *CertificateService) RegenerateCert(name string) (*Certificate, error) 
 	return cert, nil
 }
 
+func (cs *CertificateService) RegenerateAll() error {
+	certs, err := cs.repo.GetAll()
+	if err != nil {
+		return err
+	}
+	for _, cert := range certs {
+		if err := cs.repo.Remove(cert.Name); err != nil {
+			return err
+		}
+	}
+	return cs.Init()
+}
+
 func (cs *CertificateService) Init() error {
 	CAcert, err := cs.GetCA()
 	if err != nil {
