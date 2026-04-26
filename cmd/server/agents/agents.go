@@ -167,7 +167,7 @@ func (aah *AgentApiHandler) DialAgent(addr string) error {
 		return err
 	}
 
-	go aah.startSessionMonitor(newSession)
+	go aah.startSessionMonitor(newSession, addr)
 
 	events.Publish(events.OK, "bind agent '%s' connected", newSession.GetName())
 	return nil
@@ -237,7 +237,7 @@ func (aah *AgentApiHandler) startHandler() {
 		}
 		slog.Debug("new session created", slog.Any("session", newSession))
 
-		go aah.startSessionMonitor(newSession)
+		go aah.startSessionMonitor(newSession, "")
 
 		slog.Debug("session initialized")
 
@@ -246,7 +246,7 @@ func (aah *AgentApiHandler) startHandler() {
 
 }
 
-func (aah *AgentApiHandler) startSessionMonitor(sess *session.Session) {
+func (aah *AgentApiHandler) startSessionMonitor(sess *session.Session, bindAddr string) {
 	tick := time.NewTicker(1 * time.Second)
 	for {
 		select {
@@ -256,10 +256,42 @@ func (aah *AgentApiHandler) startSessionMonitor(sess *session.Session) {
 			slog.Debug("session multiplexer closed", slog.Any("session", sess))
 			aah.sessionService.DisconnectSession(sess.ID)
 			events.Publish(events.ERROR, "session with '%s' disconnected", sess.GetName())
+			if bindAddr != "" {
+				go aah.reconnectBind(sess.ID, bindAddr)
+			}
 			return
 		}
 	}
+}
 
+func (aah *AgentApiHandler) reconnectBind(sessID string, addr string) {
+	const maxRetries = 6
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if aah.sessionService.GetSession(sessID) == nil {
+			slog.Debug("bind session removed, stopping reconnect", slog.String("addr", addr))
+			return
+		}
+
+		backoff := time.Duration(attempt*5) * time.Second
+
+		slog.Info("reconnecting to bind agent",
+			slog.String("addr", addr),
+			slog.Int("attempt", attempt),
+			slog.Int("max", maxRetries),
+			slog.Duration("backoff", backoff),
+		)
+		time.Sleep(backoff)
+
+		if err := aah.DialAgent(addr); err != nil {
+			events.Publish(events.ERROR, "Attempt %d/%d to reconnect to bind agent '%s' failed: %s", attempt, maxRetries, addr, err)
+			continue
+		}
+
+		return
+	}
+
+	events.Publish(events.ERROR, "Unable to re-establish connection to bind agent '%s' after %d attempts; aborting retries", addr, maxRetries)
 }
 
 func (aah *AgentApiHandler) Close() {
