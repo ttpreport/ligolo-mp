@@ -12,13 +12,25 @@ import (
 	"github.com/ttpreport/ligolo-mp/v2/internal/crl"
 	"github.com/ttpreport/ligolo-mp/v2/internal/operator"
 	"github.com/ttpreport/ligolo-mp/v2/internal/storage"
+	"github.com/ttpreport/ligolo-mp/v2/internal/version"
 	"github.com/ttpreport/ligolo-mp/v2/pkg/logger"
 )
 
 func main() {
 	var verbose = flag.Bool("v", false, "enable verbose mode")
+	var showVersion = flag.Bool("version", false, "print version")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "ligolo-mp-client %s\n\nUsage:\n", version.Version)
+		flag.PrintDefaults()
+	}
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("ligolo-mp-client %s\n", version.Version)
+		os.Exit(0)
+	}
 
 	loggingOpts := &slog.HandlerOptions{}
 	if *verbose {

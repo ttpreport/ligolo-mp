@@ -3,6 +3,9 @@ BLOAT_FILES := AUTHORS CONTRIBUTORS PATENTS VERSION favicon.ico robots.txt SECUR
 GARBLE_VER := 0.14.2
 
 GO ?= go
+APP_VERSION ?= v2.2.1
+VERSION_PKG := github.com/ttpreport/ligolo-mp/v2/internal/version
+LDFLAGS := -X $(VERSION_PKG).Version=$(APP_VERSION)
 
 ARCH := $(shell uname -m)
 
@@ -60,11 +63,11 @@ agent:
 
 .PHONY: server
 server:
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -mod=vendor -trimpath -o ligolo-mp ./cmd/server/
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -mod=vendor -trimpath -ldflags "$(LDFLAGS)" -o ligolo-mp ./cmd/server/
 
 .PHONY: client
 client:
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -mod=vendor -trimpath -o ligolo-mp-client ./cmd/client/
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) CGO_ENABLED=0 $(GO) build -mod=vendor -trimpath -ldflags "$(LDFLAGS)" -o ligolo-mp-client ./cmd/client/
 
 .PHONY: protobuf
 protobuf:
