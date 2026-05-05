@@ -37,6 +37,21 @@ func NewMenuModal(title string) *MenuModal {
 	menu.table.SetTitleColor(style.FgColor)
 	menu.table.SetBorder(true)
 
+	menu.table.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+		if action == tview.MouseLeftClick {
+			x, y := event.Position()
+			tableX, tableY, tableWidth, tableHeight := menu.table.GetInnerRect()
+			if x >= tableX && x < tableX+tableWidth && y >= tableY && y < tableY+tableHeight {
+				clickedRow := y - tableY
+				if clickedRow >= 0 && clickedRow < len(menu.data) {
+					menu.data[clickedRow].actionFunc()
+					return action, nil
+				}
+			}
+		}
+		return action, event
+	})
+
 	menu.Flex.AddItem(nil, 0, 2, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 2, false).
@@ -90,7 +105,15 @@ func (page *MenuModal) AddItem(elem MenuModalElem) {
 
 	rowNo := 0
 	for _, item := range page.data {
-		page.table.SetCell(rowNo, 0, tview.NewTableCell(item.title).SetExpansion(1).SetAlign(tview.AlignCenter))
+		cell := tview.NewTableCell(item.title).
+			SetExpansion(1).
+			SetAlign(tview.AlignCenter).
+			SetSelectable(true) // Ensure cell is selectable for mouse interaction
+		page.table.SetCell(rowNo, 0, cell)
 		rowNo++
 	}
+}
+
+func (page *MenuModal) GetTable() *tview.Table {
+	return page.table
 }

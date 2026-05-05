@@ -9,6 +9,7 @@ import (
 
 type NavBar struct {
 	*tview.Flex
+	clickHandler func(tcell.Key)
 }
 
 type NavBarElem struct {
@@ -30,13 +31,24 @@ func NewNavBarElem(k tcell.Key, h string) NavBarElem {
 	return NavBarElem{Key: k, Hint: h}
 }
 
+func (n *NavBar) SetClickHandler(handler func(tcell.Key)) {
+	n.clickHandler = handler
+}
+
 func (n *NavBar) AddButton(title string, key tcell.Key) *NavBar {
 	button := tview.NewButton(title)
 
 	label := fmt.Sprintf("[yellow][::b]%s[::-][brown] %s", tcell.KeyNames[key], button.GetLabel())
 	button.SetLabel(label)
 
-	n.AddItem(button, 0, 1, false)
+	// Add mouse support - when button is clicked, call the click handler
+	button.SetSelectedFunc(func() {
+		if n.clickHandler != nil {
+			n.clickHandler(key)
+		}
+	})
+
+	n.AddItem(button, 0, 1, true)
 	n.AddItem(tview.NewBox(), 1, 0, false)
 
 	return n

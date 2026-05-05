@@ -255,3 +255,7 @@ func (creds *CredentialsPage) ShowInfo(text string, done func()) {
 	})
 	creds.AddPage(modal.GetID(), modal, true, true)
 }
+
+func (creds *CredentialsPage) GetTable() *tview.Table {
+	return creds.table
+}

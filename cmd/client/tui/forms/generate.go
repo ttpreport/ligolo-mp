@@ -38,25 +38,25 @@ var (
 )
 
 type GenerateForm struct {
-	tview.Flex
+	*tview.Flex
 	form      *tview.Form
+	hintBox   *tview.TextView
 	submitBtn *tview.Button
 	cancelBtn *tview.Button
 }
 
 func NewGenerateForm() *GenerateForm {
 	gen := &GenerateForm{
-		Flex:      *tview.NewFlex(),
 		form:      tview.NewForm(),
 		submitBtn: tview.NewButton("Submit"),
 		cancelBtn: tview.NewButton("Cancel"),
 	}
 
-	hintBox := tview.NewTextView()
-	hintBox.SetTitle("HINT")
-	hintBox.SetTitleAlign(tview.AlignCenter)
-	hintBox.SetBorder(true)
-	hintBox.SetBorderPadding(1, 1, 1, 1)
+	gen.hintBox = tview.NewTextView()
+	gen.hintBox.SetTitle("HINT")
+	gen.hintBox.SetTitleAlign(tview.AlignCenter)
+	gen.hintBox.SetBorder(true)
+	gen.hintBox.SetBorderPadding(1, 1, 1, 1)
 
 	gen.form.SetTitle("Generate agent").SetTitleAlign(tview.AlignCenter)
 	gen.form.SetBorder(true)
@@ -66,7 +66,7 @@ func NewGenerateForm() *GenerateForm {
 	saveToField.SetLabel("Save to")
 	saveToField.SetText(generate_saveTo.Last)
 	saveToField.SetFocusFunc(func() {
-		hintBox.SetText(generate_saveTo.Hint)
+		gen.hintBox.SetText(generate_saveTo.Hint)
 	})
 	saveToField.SetChangedFunc(func(text string) {
 		generate_saveTo.Last = text
@@ -77,7 +77,7 @@ func NewGenerateForm() *GenerateForm {
 	serversField.SetLabel("Servers")
 	serversField.SetText(generate_servers.Last, true)
 	serversField.SetFocusFunc(func() {
-		hintBox.SetText(generate_servers.Hint)
+		gen.hintBox.SetText(generate_servers.Hint)
 	})
 	serversField.SetChangedFunc(func() {
 		generate_servers.Last = serversField.GetText()
@@ -88,7 +88,7 @@ func NewGenerateForm() *GenerateForm {
 	proxyField.SetLabel("Proxy")
 	proxyField.SetText(generate_proxy.Last)
 	proxyField.SetFocusFunc(func() {
-		hintBox.SetText(generate_proxy.Hint)
+		gen.hintBox.SetText(generate_proxy.Hint)
 	})
 	proxyField.SetChangedFunc(func(text string) {
 		generate_proxy.Last = text
@@ -99,7 +99,7 @@ func NewGenerateForm() *GenerateForm {
 	ignoreEnvProxyField.SetLabel("Ignore env proxy")
 	ignoreEnvProxyField.SetChecked(generate_ignoreEnvProxy.Last)
 	ignoreEnvProxyField.SetFocusFunc(func() {
-		hintBox.SetText(generate_ignoreEnvProxy.Hint)
+		gen.hintBox.SetText(generate_ignoreEnvProxy.Hint)
 	})
 	ignoreEnvProxyField.SetChangedFunc(func(checked bool) {
 		generate_ignoreEnvProxy.Last = checked
@@ -109,7 +109,7 @@ func NewGenerateForm() *GenerateForm {
 	goosField := tview.NewDropDown()
 	goosField.SetLabel("OS")
 	goosField.SetFocusFunc(func() {
-		hintBox.SetText(generate_goos.Hint)
+		gen.hintBox.SetText(generate_goos.Hint)
 	})
 	goosField.SetOptions([]string{"Windows", "Linux", "FreeBSD", "Darwin"}, func(option string, index int) {
 		generate_goos.Last.ID = index
@@ -121,7 +121,7 @@ func NewGenerateForm() *GenerateForm {
 	goarchField := tview.NewDropDown()
 	goarchField.SetLabel("Arch")
 	goarchField.SetFocusFunc(func() {
-		hintBox.SetText(generate_goarch.Hint)
+		gen.hintBox.SetText(generate_goarch.Hint)
 	})
 	goarchField.SetOptions([]string{"amd64", "386", "arm64", "arm"}, func(option string, index int) {
 		generate_goarch.Last.ID = index
@@ -134,10 +134,10 @@ func NewGenerateForm() *GenerateForm {
 	obfuscateField.SetLabel("Obfuscate")
 	obfuscateField.SetChecked(generate_obfuscate.Last)
 	obfuscateField.SetFocusFunc(func() {
-		hintBox.SetText(generate_obfuscate.Hint)
+		gen.hintBox.SetText(generate_obfuscate.Hint)
 	})
 	obfuscateField.SetBlurFunc(func() {
-		hintBox.Clear()
+		gen.hintBox.Clear()
 	})
 	obfuscateField.SetChangedFunc(func(checked bool) {
 		generate_obfuscate.Last = checked
@@ -147,15 +147,18 @@ func NewGenerateForm() *GenerateForm {
 	gen.form.AddButton("Submit", nil)
 	gen.form.AddButton("Cancel", nil)
 
-	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+	// Create the modal content with form and hint box
+	modalContent := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(gen.form, 23, 1, true).
-		AddItem(hintBox, 11, 1, false)
+		AddItem(gen.hintBox, 11, 1, false)
 
-	gen.AddItem(nil, 0, 1, false).
+	// Center the modal content - this creates the modal effect
+	gen.Flex = tview.NewFlex().
+		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(formFlex, 0, 1, true).
-			AddItem(nil, 0, 1, false), 0, 3, true).
+			AddItem(modalContent, 34, 1, true).
+			AddItem(nil, 0, 1, false), 80, 1, true).
 		AddItem(nil, 0, 1, false)
 
 	return gen

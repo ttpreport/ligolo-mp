@@ -53,6 +53,27 @@ func NewApp(operService *operator.OperatorService) *App {
 		operService: operService,
 	}
 
+	// Enable mouse support
+	app.EnableMouse(true)
+
+	// Set up navbar click handler to simulate keyboard events
+	app.navbar.SetClickHandler(func(key tcell.Key) {
+		// Ensure proper focus for the current page before simulating key event
+		switch app.currentPage {
+		case app.credentials.GetID():
+			// Focus the credentials table so InputHandler processes the event properly
+			app.SetFocus(app.credentials.GetTable())
+		case app.dashboard.GetID():
+			app.SetFocus(app.dashboard)
+		case app.admin.GetID():
+			app.SetFocus(app.admin)
+		}
+
+		// Create and queue the keyboard event - let existing handlers process it
+		event := tcell.NewEventKey(key, 0, tcell.ModNone)
+		app.QueueEvent(event)
+	})
+
 	app.root.SetDirection(tview.FlexRow).
 		AddItem(app.layout, 0, 99, true).
 		AddItem(app.navbar, 0, 1, false)
