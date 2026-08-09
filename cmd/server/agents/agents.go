@@ -25,29 +25,31 @@ type AgentApiHandler struct {
 	quit        chan error
 }
 
-func Run(config *config.Config, certService *certificate.CertificateService, sessionService *session.SessionService) error {
+// Run starts the agent listener and returns the handler immediately.
+// Call Done() to receive the error when the listener exits.
+func Run(config *config.Config, certService *certificate.CertificateService, sessionService *session.SessionService) (*AgentApiHandler, error) {
 	CACert, err := certService.GetCA()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if CACert == nil {
-		return errors.New("CA certificate not found")
+		return nil, errors.New("CA certificate not found")
 	}
 	certpool, err := CACert.CertPool()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	agentCert, err := certService.GetAgentServerCert()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if agentCert == nil {
-		return errors.New("agent server certificate not found")
+		return nil, errors.New("agent server certificate not found")
 	}
 	tlsCert, err := agentCert.KeyPair()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	handler := &AgentApiHandler{
@@ -94,7 +96,81 @@ func Run(config *config.Config, certService *certificate.CertificateService, ses
 
 	go handler.serve("tcp", config.ListenInterface, tlsConfig)
 
-	return <-handler.quit
+	return handler, nil
+}
+
+// Done returns a channel that receives an error when the agent listener exits.
+func (aah *AgentApiHandler) Done() <-chan error {
+	return aah.quit
+}
+
+// DialAgent connects to a bind-mode agent listening at addr.
+// The server acts as TLS client; the agent acts as TLS server.
+// yamux roles are unchanged: server=Client, agent=Server.
+func (aah *AgentApiHandler) DialAgent(addr string) error {
+	CACert, err := aah.certService.GetCA()
+	if err != nil {
+		return err
+	}
+	if CACert == nil {
+		return errors.New("CA certificate not found")
+	}
+	certpool, err := CACert.CertPool()
+	if err != nil {
+		return err
+	}
+
+	agentCert, err := aah.certService.GetAgentServerCert()
+	if err != nil {
+		return err
+	}
+	if agentCert == nil {
+		return errors.New("agent server certificate not found")
+	}
+	tlsCert, err := agentCert.KeyPair()
+	if err != nil {
+		return err
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{tlsCert},
+		RootCAs:            certpool,
+		MinVersion:         tls.VersionTLS13,
+		MaxVersion:         tls.VersionTLS13,
+		InsecureSkipVerify: true,
+		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
+			cert, err := x509.ParseCertificate(rawCerts[0])
+			if err != nil {
+				return err
+			}
+			_, err = cert.Verify(x509.VerifyOptions{Roots: certpool})
+			return err
+		},
+	}
+
+	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 10 * time.Second}, "tcp", addr, tlsConfig)
+	if err != nil {
+		return err
+	}
+
+	cfg := yamux.DefaultConfig()
+	cfg.LogOutput = io.Discard
+	yamuxConn, err := yamux.Client(conn, cfg)
+	if err != nil {
+		conn.Close()
+		return err
+	}
+
+	newSession, err := aah.sessionService.NewSession(yamuxConn)
+	if err != nil {
+		yamuxConn.Close()
+		return err
+	}
+
+	go aah.startSessionMonitor(newSession, addr)
+
+	events.Publish(events.OK, "bind agent '%s' connected", newSession.GetName())
+	return nil
 }
 
 func (aah *AgentApiHandler) serve(protocol string, listenIface string, tlsConfig *tls.Config) {
@@ -161,7 +237,7 @@ func (aah *AgentApiHandler) startHandler() {
 		}
 		slog.Debug("new session created", slog.Any("session", newSession))
 
-		go aah.startSessionMonitor(newSession)
+		go aah.startSessionMonitor(newSession, "")
 
 		slog.Debug("session initialized")
 
@@ -170,7 +246,7 @@ func (aah *AgentApiHandler) startHandler() {
 
 }
 
-func (aah *AgentApiHandler) startSessionMonitor(sess *session.Session) {
+func (aah *AgentApiHandler) startSessionMonitor(sess *session.Session, bindAddr string) {
 	tick := time.NewTicker(1 * time.Second)
 	for {
 		select {
@@ -180,10 +256,42 @@ func (aah *AgentApiHandler) startSessionMonitor(sess *session.Session) {
 			slog.Debug("session multiplexer closed", slog.Any("session", sess))
 			aah.sessionService.DisconnectSession(sess.ID)
 			events.Publish(events.ERROR, "session with '%s' disconnected", sess.GetName())
+			if bindAddr != "" {
+				go aah.reconnectBind(sess.ID, bindAddr)
+			}
 			return
 		}
 	}
+}
 
+func (aah *AgentApiHandler) reconnectBind(sessID string, addr string) {
+	const maxRetries = 6
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if aah.sessionService.GetSession(sessID) == nil {
+			slog.Debug("bind session removed, stopping reconnect", slog.String("addr", addr))
+			return
+		}
+
+		backoff := time.Duration(attempt*5) * time.Second
+
+		slog.Info("reconnecting to bind agent",
+			slog.String("addr", addr),
+			slog.Int("attempt", attempt),
+			slog.Int("max", maxRetries),
+			slog.Duration("backoff", backoff),
+		)
+		time.Sleep(backoff)
+
+		if err := aah.DialAgent(addr); err != nil {
+			events.Publish(events.ERROR, "Attempt %d/%d to reconnect to bind agent '%s' failed: %s", attempt, maxRetries, addr, err)
+			continue
+		}
+
+		return
+	}
+
+	events.Publish(events.ERROR, "Unable to re-establish connection to bind agent '%s' after %d attempts; aborting retries", addr, maxRetries)
 }
 
 func (aah *AgentApiHandler) Close() {

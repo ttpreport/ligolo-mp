@@ -129,12 +129,17 @@ func main() {
 		slog.SetDefault(logHandler)
 	}
 
+	agentHandler, err := agents.Run(cfg, certService, sessService)
+	if err != nil {
+		panic(fmt.Sprintf("could not start agent server: %v", err))
+	}
+
 	quit := make(chan error)
 	go func() {
-		quit <- agents.Run(cfg, certService, sessService)
+		quit <- <-agentHandler.Done()
 	}()
 	go func() {
-		quit <- rpc.Run(cfg, certService, sessService, operService, assetService)
+		quit <- rpc.Run(cfg, certService, sessService, operService, assetService, agentHandler)
 	}()
 
 	if *daemon {
